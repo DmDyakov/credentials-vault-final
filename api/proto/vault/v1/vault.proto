@@ -1,0 +1,76 @@
+syntax = "proto3";
+
+package credentials_vault.vault.v1;
+
+option go_package = "credentials-vault/gen/go/vault/v1;vaultv1";
+
+import "google/protobuf/timestamp.proto";
+
+service VaultService {
+  rpc CreateItem(CreateItemRequest) returns (CreateItemResponse);
+  rpc ListItems(ListItemsRequest) returns (ListItemsResponse);
+  rpc GetItem(GetItemRequest) returns (GetItemResponse);
+  rpc UpdateItem(UpdateItemRequest) returns (UpdateItemResponse);
+  rpc DeleteItem(DeleteItemRequest) returns (DeleteItemResponse);
+}
+
+enum ItemType {
+  ITEM_TYPE_UNSPECIFIED = 0;
+  ITEM_TYPE_LOGIN = 1;
+  ITEM_TYPE_CARD = 2;
+  ITEM_TYPE_TEXT = 3;
+  ITEM_TYPE_BINARY = 4;
+}
+
+message VaultItem {
+  string id = 1;
+  ItemType type = 2;
+  bytes encrypted_data = 3;
+  map<string, string> metadata = 4;
+  google.protobuf.Timestamp created_at = 5;
+  google.protobuf.Timestamp updated_at = 6;
+}
+
+message CreateItemRequest {
+  ItemType type = 1;
+  bytes encrypted_data = 2;
+  map<string, string> metadata = 3;
+}
+
+message CreateItemResponse {
+  VaultItem item = 1;
+}
+
+message ListItemsRequest {
+  ItemType type = 1;
+}
+
+message ListItemsResponse {
+  repeated VaultItem items = 1;
+}
+
+message GetItemRequest {
+  string id = 1;
+}
+
+message GetItemResponse {
+  VaultItem item = 1;
+}
+
+message UpdateItemRequest {
+  string id = 1;
+  bytes encrypted_data = 2;
+  map<string, string> metadata = 3;
+}
+
+message UpdateItemResponse {
+  VaultItem item = 1;
+}
+
+message DeleteItemRequest {
+  string id = 1;
+}
+
+message DeleteItemResponse {
+  string message = 1;
+}

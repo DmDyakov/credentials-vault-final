@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: credentials_vault
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+
+      - name: Install golangci-lint
+        run: go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.8
+
+      - name: Format check
+        run: make check-fmt
+
+      - name: Lint
+        run: make lint
+
+      - name: Staticlint
+        run: make staticlint
+
+      - name: Generate proto
+        run: make proto
+
+      - name: Tests with coverage
+        run: make test-coverage
+        env:
+          DATABASE_DSN: 'postgres://postgres:postgres@localhost:5432/credentials_vault?sslmode=disable'
+          JWT_SECRET: 'ci-test-secret'
+          APP_ENV: 'test'

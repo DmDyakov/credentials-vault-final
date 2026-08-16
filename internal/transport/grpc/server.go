@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 
+	pb "credentials-vault/gen/go/auth/v1"
 	"credentials-vault/internal/config"
 
 	"go.uber.org/zap"
@@ -20,8 +21,9 @@ type Server struct {
 }
 
 // NewServer создаёт gRPC-сервер.
-func NewServer(cfg *config.Config, logger *zap.Logger) *Server {
+func NewServer(cfg *config.Config, logger *zap.Logger, authService pb.AuthServiceServer) *Server {
 	s := grpc.NewServer()
+	pb.RegisterAuthServiceServer(s, authService)
 
 	if cfg.IsDev() {
 		reflection.Register(s)

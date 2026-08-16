@@ -3,7 +3,6 @@ package postgres
 
 import (
 	"context"
-	"credentials-vault/internal/config"
 	"database/sql"
 	"embed"
 	"fmt"
@@ -14,17 +13,25 @@ import (
 	"github.com/golang-migrate/migrate/v4/source/iofs"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"go.uber.org/zap"
+
+	"credentials-vault/internal/config"
 )
 
 //go:embed migrations/*.sql
 var migrationsFS embed.FS
 
-// New — создает подключение к PostgreSQL
+// New создаёт подключение к PostgreSQL и применяет миграции.
 func New(cfg config.PostgresConfig, logger *zap.Logger) (*sql.DB, error) {
 	if cfg.DSN == "" {
 		return nil, fmt.Errorf("postgres: DSN is required")
 	}
 
+	// Применяем миграции через временное подключение
+	if err := runMigrations(cfg, logger); err != nil {
+		return nil, fmt.Errorf("postgres: failed to run migrations: %w", err)
+	}
+
+	// Основное подключение для приложения
 	db, err := sql.Open("pgx", cfg.DSN)
 	if err != nil {
 		return nil, fmt.Errorf("postgres: failed to open connection: %w", err)
@@ -40,50 +47,24 @@ func New(cfg config.PostgresConfig, logger *zap.Logger) (*sql.DB, error) {
 		return nil, fmt.Errorf("postgres: failed to establish connection: %w", err)
 	}
 
-	logger.Info("applying postgres migrations")
-	if err := runMigrations(db, cfg.MigrationTimeout, logger); err != nil {
-		db.Close()
-		return nil, fmt.Errorf("postgres: failed to run migrations: %w", err)
-	}
+	logger.Info("postgres connection established")
 
 	return db, nil
 }
 
-// pingWithRetry — проверка подключения с повторными попытками
-func pingWithRetry(db *sql.DB, cfg config.PostgresConfig, logger *zap.Logger) error {
-	var lastErr error
-
-	for attempt := 1; attempt <= cfg.MaxRetries; attempt++ {
-		ctx, cancel := context.WithTimeout(context.Background(), cfg.ConnectTimeout)
-		err := db.PingContext(ctx)
-		cancel()
-
-		if err == nil {
-			logger.Info("postgres connection established",
-				zap.Int("attempt", attempt),
-			)
-			return nil
-		}
-
-		lastErr = err
-		logger.Warn("failed to ping postgres",
-			zap.Int("attempt", attempt),
-			zap.Int("max_retries", cfg.MaxRetries),
-			zap.Error(err),
-		)
-
-		if attempt < cfg.MaxRetries {
-			time.Sleep(cfg.RetryInterval)
-		}
+// runMigrations применяет миграции через отдельное подключение.
+func runMigrations(cfg config.PostgresConfig, logger *zap.Logger) error {
+	db, err := sql.Open("pgx", cfg.DSN)
+	if err != nil {
+		return fmt.Errorf("failed to open migration connection: %w", err)
 	}
+	defer db.Close()
 
-	return fmt.Errorf("after %d attempts: %w", cfg.MaxRetries, lastErr)
-}
+	ctx, cancel := context.WithTimeout(context.Background(), cfg.ConnectTimeout)
+	defer cancel()
 
-// runMigrations — применяет миграции
-func runMigrations(db *sql.DB, timeout time.Duration, logger *zap.Logger) error {
-	if timeout == 0 {
-		timeout = 30 * time.Second
+	if err := db.PingContext(ctx); err != nil {
+		return fmt.Errorf("failed to ping postgres for migrations: %w", err)
 	}
 
 	source, err := iofs.New(migrationsFS, "migrations")
@@ -119,7 +100,35 @@ func runMigrations(db *sql.DB, timeout time.Duration, logger *zap.Logger) error 
 			logger.Info("migrations applied successfully")
 		}
 		return nil
-	case <-time.After(timeout):
-		return fmt.Errorf("migration timeout after %s", timeout)
+	case <-time.After(cfg.MigrationTimeout):
+		return fmt.Errorf("migration timeout after %s", cfg.MigrationTimeout)
 	}
+}
+
+// pingWithRetry проверяет подключение с повторными попытками.
+func pingWithRetry(db *sql.DB, cfg config.PostgresConfig, logger *zap.Logger) error {
+	var lastErr error
+
+	for attempt := 1; attempt <= cfg.MaxRetries; attempt++ {
+		ctx, cancel := context.WithTimeout(context.Background(), cfg.ConnectTimeout)
+		err := db.PingContext(ctx)
+		cancel()
+
+		if err == nil {
+			return nil
+		}
+
+		lastErr = err
+		logger.Warn("failed to ping postgres",
+			zap.Int("attempt", attempt),
+			zap.Int("max_retries", cfg.MaxRetries),
+			zap.Error(err),
+		)
+
+		if attempt < cfg.MaxRetries {
+			time.Sleep(cfg.RetryInterval)
+		}
+	}
+
+	return fmt.Errorf("after %d attempts: %w", cfg.MaxRetries, lastErr)
 }

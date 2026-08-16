@@ -47,7 +47,6 @@ type PostgresConfig struct {
 type JWTConfig struct {
 	Secret          string        `env:"JWT_SECRET,required" validate:"min=32"`
 	AccessTokenTTL  time.Duration `env:"JWT_ACCESS_TTL" envDefault:"15m" validate:"gt=0"`
-	RefreshTokenTTL time.Duration `env:"JWT_REFRESH_TTL" envDefault:"24h" validate:"gt=0"`
 	Issuer          string        `env:"JWT_ISSUER" envDefault:"credentials-vault" validate:"required"`
 }
 

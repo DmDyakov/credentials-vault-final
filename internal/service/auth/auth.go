@@ -1,10 +1,9 @@
 // Package service содержит бизнес-логику.
-package service
+package auth
 
 import (
 	"context"
 	"errors"
-	"strings"
 
 	"golang.org/x/crypto/bcrypt"
 	"google.golang.org/grpc/codes"
@@ -14,6 +13,7 @@ import (
 	pb "credentials-vault/gen/go/auth/v1"
 	"credentials-vault/internal/model"
 	"credentials-vault/internal/repository"
+	"credentials-vault/pkg/jwt"
 )
 
 //go:generate mockgen -source=auth.go -destination=mocks/users_mock.go -package=mocks UserRepository
@@ -24,17 +24,19 @@ type UserRepository interface {
 
 type AuthService struct {
 	pb.UnimplementedAuthServiceServer
-	repo UserRepository
+	repo       UserRepository
+	jwtManager *jwt.Manager
 }
 
-func NewAuthService(repo UserRepository) *AuthService {
+func NewAuthService(repo UserRepository, jwtManager *jwt.Manager) *AuthService {
 	return &AuthService{
-		repo: repo,
+		repo:       repo,
+		jwtManager: jwtManager,
 	}
 }
 
 func (s *AuthService) Register(ctx context.Context, req *pb.RegisterRequest) (*pb.RegisterResponse, error) {
-	if err := validateCredentials(req.Username, req.Password); err != nil {
+	if err := validateRegisterCredentials(req.Username, req.Password); err != nil {
 		return nil, err
 	}
 
@@ -43,7 +45,7 @@ func (s *AuthService) Register(ctx context.Context, req *pb.RegisterRequest) (*p
 		return nil, status.Error(codes.AlreadyExists, "username already exists")
 	}
 	if !errors.Is(err, repository.ErrUserNotFound) {
-		return nil, status.Error(codes.Internal, "failed to check user existence")
+		return nil, status.Errorf(codes.Internal, "failed to check user existence: %v", err)
 	}
 
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
@@ -69,26 +71,31 @@ func (s *AuthService) Register(ctx context.Context, req *pb.RegisterRequest) (*p
 	}, nil
 }
 
-func modelToProto(user *model.User) *pb.User {
-	return &pb.User{
-		Id:        user.ID.String(),
-		Username:  user.Username,
-		CreatedAt: timestamppb.New(user.CreatedAt),
+func (s *AuthService) Login(ctx context.Context, req *pb.LoginRequest) (*pb.LoginResponse, error) {
+	if err := validateLoginCredentials(req.Username, req.Password); err != nil {
+		return nil, err
 	}
-}
 
-func validateCredentials(username, password string) error {
-	if strings.TrimSpace(username) == "" {
-		return status.Error(codes.InvalidArgument, "username is required")
+	user, err := s.repo.FindByUsername(ctx, req.Username)
+	if err != nil {
+		if errors.Is(err, repository.ErrUserNotFound) {
+			return nil, status.Error(codes.Unauthenticated, "invalid username or password")
+		}
+		return nil, status.Error(codes.Internal, "failed to find user")
 	}
-	if len(username) < 3 {
-		return status.Error(codes.InvalidArgument, "username must be at least 3 characters")
+
+	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
+		return nil, status.Error(codes.Unauthenticated, "invalid username or password")
 	}
-	if password == "" {
-		return status.Error(codes.InvalidArgument, "password is required")
+
+	token, expiresAt, err := s.jwtManager.Generate(user.ID.String())
+	if err != nil {
+		return nil, status.Error(codes.Internal, "failed to generate token")
 	}
-	if len(password) < 6 {
-		return status.Error(codes.InvalidArgument, "password must be at least 6 characters")
-	}
-	return nil
+
+	return &pb.LoginResponse{
+		AccessToken: token,
+		ExpiresAt:   timestamppb.New(expiresAt),
+		User:        modelToProto(user),
+	}, nil
 }

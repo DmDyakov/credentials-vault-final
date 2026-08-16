@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"io"
 
-	pb "credentials-vault/gen/go/auth/v1"
 	"credentials-vault/internal/config"
 	"credentials-vault/internal/infrastructure/postgres"
 	"credentials-vault/internal/repository"
-	"credentials-vault/internal/service"
+	"credentials-vault/internal/service/auth"
 	"credentials-vault/internal/transport/grpc"
+	"credentials-vault/pkg/jwt"
 
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
@@ -33,9 +33,9 @@ func New(cfg *config.Config, logger *zap.Logger) (*App, error) {
 	}
 
 	userRepo := repository.NewUserRepository(pg)
-	authService := service.NewAuthService(userRepo)
-	grpcServer := grpc.NewServer(cfg, logger)
-	pb.RegisterAuthServiceServer(grpcServer, authService)
+	jwtManager := jwt.New(cfg.JWT.Secret, cfg.JWT.AccessTokenTTL)
+	authService := auth.NewAuthService(userRepo, jwtManager)
+	grpcServer := grpc.NewServer(cfg, logger, authService)
 
 	return &App{
 		cfg:        cfg,

@@ -1,3 +1,4 @@
+// Package postgres реализует подключение к PostgreSQL.
 package postgres
 
 import (

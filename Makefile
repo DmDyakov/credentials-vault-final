@@ -6,7 +6,7 @@ LDFLAGS := -X credentials-vault/pkg/buildinfo.Version=$(VERSION) \
            -X credentials-vault/pkg/buildinfo.Date=$(DATE) \
            -X credentials-vault/pkg/buildinfo.Commit=$(COMMIT)
 
-.PHONY: proto setup build dev prod down test test-coverage test-coverage-html check-fmt fmt lint staticlint \
+.PHONY: proto mocks generate setup build dev prod down test test-coverage test-coverage-html check-fmt fmt lint staticlint \
         migrate-up migrate-down migrate-status docker-logs docker-ps docker-rebuild clean
 
 # ═══════════════════════════════════════════
@@ -25,8 +25,15 @@ proto:
 		api/proto/auth/v1/auth.proto \
 		api/proto/vault/v1/vault.proto
 
+# Генерация моков
+mocks:
+	go generate ./...
+
+# Генерация всего (proto + mocks)
+generate: proto mocks
+
 # Полная настройка: зависимости, генерация, сборка
-setup: proto
+setup: generate
 	go mod tidy
 	make build
 

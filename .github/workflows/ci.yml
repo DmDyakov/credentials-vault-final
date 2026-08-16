@@ -6,7 +6,32 @@ on:
     branches: [main]
 
 jobs:
-  lint-and-test:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+          cache: true
+
+      - name: Install golangci-lint
+        run: go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.8
+
+      - name: Format check
+        run: make check-fmt
+
+      - name: Lint
+        run: make lint
+
+      - name: Staticlint
+        run: make staticlint
+
+  test:
+    name: Tests
     runs-on: ubuntu-latest
 
     services:
@@ -30,18 +55,7 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: 'go.mod'
-
-      - name: Install golangci-lint
-        run: go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.8
-
-      - name: Format check
-        run: make check-fmt
-
-      - name: Lint
-        run: make lint
-
-      - name: Staticlint
-        run: make staticlint
+          cache: true
 
       - name: Generate proto
         run: make proto
@@ -49,6 +63,6 @@ jobs:
       - name: Tests with coverage
         run: make test-coverage
         env:
-          DATABASE_DSN: 'postgres://postgres:postgres@localhost:5432/credentials_vault?sslmode=disable'
-          JWT_SECRET: 'ci-test-secret'
+          POSTGRES_DSN: 'postgres://postgres:postgres@localhost:5432/credentials_vault?sslmode=disable'
+          JWT_SECRET: 'ci-test-secret-key-123456789012345678901234567890'
           APP_ENV: 'test'

@@ -2,53 +2,92 @@ package config
 
 import (
 	"fmt"
-	"os"
+	"net/url"
 	"time"
+
+	"github.com/caarlos0/env/v11"
 )
 
+// Config — общая конфигурация приложения
 type Config struct {
-	AppEnv          string
-	GRPCAddress     string
-	DatabaseDSN     string
-	JWTSecret       string
-	ShutdownTimeout time.Duration
+	AppEnv          string        `env:"APP_ENV" envDefault:"dev" validate:"oneof=dev staging prod"`
+	ShutdownTimeout time.Duration `env:"SHUTDOWN_TIMEOUT" envDefault:"10s" validate:"gt=0"`
+	GRPCServer      GRPCServerConfig
+	Postgres        PostgresConfig
+	JWT             JWTConfig
 }
 
-func Load() (*Config, error) {
-	cfg := &Config{
-		AppEnv:          getEnv("APP_ENV", "dev"),
-		GRPCAddress:     getEnv("GRPC_ADDRESS", ":9090"),
-		DatabaseDSN:     os.Getenv("DATABASE_DSN"),
-		JWTSecret:       os.Getenv("JWT_SECRET"),
-		ShutdownTimeout: getEnvDuration("SHUTDOWN_TIMEOUT", 10*time.Second),
-	}
+// GRPCServerConfig — конфигурация gRPC сервера
+type GRPCServerConfig struct {
+	Address      string        `env:"GRPC_ADDRESS" envDefault:":9090" validate:"required"`
+	ReadTimeout  time.Duration `env:"SERVER_READ_TIMEOUT" envDefault:"5s" validate:"gt=0"`
+	WriteTimeout time.Duration `env:"SERVER_WRITE_TIMEOUT" envDefault:"5s" validate:"gt=0"`
+	MaxMsgSize   int           `env:"SERVER_MAX_MSG_SIZE" envDefault:"4194304" validate:"gte=1024"`
+}
 
-	if cfg.DatabaseDSN == "" {
-		return nil, fmt.Errorf("DATABASE_DSN is required")
-	}
-	if cfg.JWTSecret == "" {
-		return nil, fmt.Errorf("JWT_SECRET is required")
+// PostgresConfig — конфигурация подключения к PostgreSQL
+type PostgresConfig struct {
+	DSN string `env:"POSTGRES_DSN,required,notEmpty"`
+
+	MaxOpenConns    int           `env:"POSTGRES_MAX_OPEN_CONNS" envDefault:"25" validate:"gte=1"`
+	MaxIdleConns    int           `env:"POSTGRES_MAX_IDLE_CONNS" envDefault:"5" validate:"gte=0"`
+	ConnMaxLifetime time.Duration `env:"POSTGRES_CONN_MAX_LIFETIME" envDefault:"5m" validate:"gt=0"`
+	ConnMaxIdleTime time.Duration `env:"POSTGRES_CONN_MAX_IDLE_TIME" envDefault:"5m" validate:"gt=0"`
+
+	ConnectTimeout time.Duration `env:"POSTGRES_CONNECT_TIMEOUT" envDefault:"10s" validate:"gt=0"`
+	MaxRetries     int           `env:"POSTGRES_MAX_RETRIES" envDefault:"5" validate:"gte=1"`
+	RetryInterval  time.Duration `env:"POSTGRES_RETRY_INTERVAL" envDefault:"3s" validate:"gt=0"`
+
+	MigrateOnStart   bool          `env:"POSTGRES_MIGRATE_ON_START" envDefault:"true"`
+	MigrationTimeout time.Duration `env:"POSTGRES_MIGRATION_TIMEOUT" envDefault:"30s" validate:"gt=0"`
+}
+
+// JWTConfig — конфигурация JWT токенов
+type JWTConfig struct {
+	Secret          string        `env:"JWT_SECRET,required" validate:"min=32"`
+	AccessTokenTTL  time.Duration `env:"JWT_ACCESS_TTL" envDefault:"15m" validate:"gt=0"`
+	RefreshTokenTTL time.Duration `env:"JWT_REFRESH_TTL" envDefault:"24h" validate:"gt=0"`
+	Issuer          string        `env:"JWT_ISSUER" envDefault:"credentials-vault" validate:"required"`
+}
+
+// Load — загружает конфигурацию из переменных окружения
+func Load() (*Config, error) {
+	cfg := &Config{}
+
+	if err := env.Parse(cfg); err != nil {
+		return nil, fmt.Errorf("failed to parse config: %w", err)
 	}
 
 	return cfg, nil
 }
 
+// IsProd — проверяет, является ли окружение production
 func (c *Config) IsProd() bool {
 	return c.AppEnv == "prod"
 }
 
-func getEnv(key, fallback string) string {
-	if v := os.Getenv(key); v != "" {
-		return v
-	}
-	return fallback
+// IsStaging — проверяет, является ли окружение staging
+func (c *Config) IsStaging() bool {
+	return c.AppEnv == "staging"
 }
 
-func getEnvDuration(key string, fallback time.Duration) time.Duration {
-	if v := os.Getenv(key); v != "" {
-		if d, err := time.ParseDuration(v); err == nil {
-			return d
+// IsDev — проверяет, является ли окружение development
+func (c *Config) IsDev() bool {
+	return c.AppEnv == "dev"
+}
+
+// DSNRedacted — возвращает DSN без пароля для логирования
+func (c PostgresConfig) DSNRedacted() string {
+	u, err := url.Parse(c.DSN)
+	if err != nil {
+		return "invalid-dsn"
+	}
+
+	if u.User != nil {
+		if _, has := u.User.Password(); has {
+			u.User = url.UserPassword(u.User.Username(), "***")
 		}
 	}
-	return fallback
+
+	return u.String()
 }

@@ -6,7 +6,12 @@ LDFLAGS := -X credentials-vault/pkg/buildinfo.Version=$(VERSION) \
            -X credentials-vault/pkg/buildinfo.Date=$(DATE) \
            -X credentials-vault/pkg/buildinfo.Commit=$(COMMIT)
 
-.PHONY: proto setup build dev prod down test test-coverage check-fmt lint staticlint
+.PHONY: proto setup build dev prod down test test-coverage test-coverage-html check-fmt fmt lint staticlint \
+        migrate-up migrate-down migrate-status docker-logs docker-ps docker-rebuild clean
+
+# ═══════════════════════════════════════════
+# Генерация и сборка
+# ═══════════════════════════════════════════
 
 # Генерация gRPC-кода
 proto:
@@ -30,6 +35,10 @@ build:
 	mkdir -p bin
 	go build -ldflags "$(LDFLAGS)" -o bin/server ./cmd/server
 
+# ═══════════════════════════════════════════
+# Окружения
+# ═══════════════════════════════════════════
+
 # Dev-окружение
 dev:
 	docker compose --env-file .env.dev up -d --no-deps postgres
@@ -43,6 +52,14 @@ prod:
 down:
 	docker compose down
 
+# Остановить и удалить volumes
+down-clean:
+	docker compose down -v
+
+# ═══════════════════════════════════════════
+# Тестирование
+# ═══════════════════════════════════════════
+
 # Тесты
 test:
 	go test ./...
@@ -52,14 +69,92 @@ test-coverage:
 	go test -coverprofile=coverage.out ./...
 	go tool cover -func=coverage.out
 
+# HTML отчет покрытия
+test-coverage-html:
+	go test -coverprofile=coverage.out ./...
+	go tool cover -html=coverage.out -o coverage.html
+	@echo "Coverage report: coverage.html"
+
+# Тесты с race detector
+test-race:
+	go test -race ./...
+
+# ═══════════════════════════════════════════
+# Линтеры
+# ═══════════════════════════════════════════
+
+# Форматирование
+fmt:
+	go fmt ./...
+
 # Проверка форматирования
 check-fmt:
-	test -z "$$(gofmt -l .)"
+	@test -z "$$(gofmt -l .)" || (echo "Files need formatting:" && gofmt -l . && exit 1)
 
 # Стандартный линтер
 lint:
 	golangci-lint run ./...
 
+# Go vet
+vet:
+	go vet ./...
+
 # Кастомный статический анализатор
 staticlint:
 	go run ./cmd/staticlint/ ./...
+
+# Все проверки
+check: check-fmt vet lint staticlint test
+	@echo "✅ All checks passed!"
+
+# ═══════════════════════════════════════════
+# Миграции
+# ═══════════════════════════════════════════
+
+# Применить миграции
+migrate-up:
+	docker compose exec postgres psql -U postgres -d credentials_vault -c "SELECT 1" > /dev/null 2>&1 || docker compose up -d postgres
+	sleep 2
+	docker compose run --rm server ./server -migrate
+
+# Откатить миграции
+migrate-down:
+	docker compose run --rm server ./server -migrate-down
+
+# Статус миграций
+migrate-status:
+	docker compose exec postgres psql -U postgres -d credentials_vault -c "SELECT * FROM schema_migrations;"
+
+# ═══════════════════════════════════════════
+# Docker
+# ═══════════════════════════════════════════
+
+# Логи сервера
+docker-logs:
+	docker compose logs -f server
+
+# Логи БД
+docker-logs-db:
+	docker compose logs -f postgres
+
+# Статус контейнеров
+docker-ps:
+	docker compose ps
+
+# Пересборка
+docker-rebuild:
+	docker compose up -d --build
+
+# ═══════════════════════════════════════════
+# Очистка
+# ═══════════════════════════════════════════
+
+# Очистка артефактов
+clean:
+	rm -rf bin/
+	rm -f coverage.out coverage.html
+	rm -rf gen/go/
+
+# Полная очистка
+clean-all: clean down-clean
+	@echo "✅ Cleaned everything!"

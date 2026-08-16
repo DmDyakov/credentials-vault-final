@@ -23,14 +23,14 @@ type Server struct {
 func NewServer(cfg *config.Config, logger *zap.Logger) *Server {
 	s := grpc.NewServer()
 
-	if !cfg.IsProd() {
+	if cfg.IsDev() {
 		reflection.Register(s)
 		logger.Info("gRPC reflection enabled (dev mode)")
 	}
 
 	return &Server{
 		Server: s,
-		addr:   cfg.GRPCAddress,
+		addr:   cfg.GRPCServer.Address,
 		logger: logger,
 	}
 }

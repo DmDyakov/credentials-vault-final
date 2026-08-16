@@ -30,7 +30,7 @@ jobs:
       - name: Staticlint
         run: make staticlint
 
-    test:
+  test:
     name: Tests
     runs-on: ubuntu-latest
 
@@ -45,23 +45,5 @@ jobs:
       - name: Tests with coverage
         run: make test-coverage
         env:
-          JWT_SECRET: 'ci-test-secret-key-123456789012345678901234567890'
-          APP_ENV: 'test'
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-go@v5
-        with:
-          go-version-file: 'go.mod'
-          cache: true
-
-      - name: Generate proto
-        run: make proto
-
-      - name: Tests with coverage
-        run: make test-coverage
-        env:
-          POSTGRES_DSN: 'postgres://postgres:postgres@localhost:5432/credentials_vault?sslmode=disable'
           JWT_SECRET: 'ci-test-secret-key-123456789012345678901234567890'
           APP_ENV: 'test'

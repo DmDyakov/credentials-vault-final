@@ -45,9 +45,9 @@ type PostgresConfig struct {
 
 // JWTConfig — конфигурация JWT токенов
 type JWTConfig struct {
-	Secret          string        `env:"JWT_SECRET,required" validate:"min=32"`
-	AccessTokenTTL  time.Duration `env:"JWT_ACCESS_TTL" envDefault:"15m" validate:"gt=0"`
-	Issuer          string        `env:"JWT_ISSUER" envDefault:"credentials-vault" validate:"required"`
+	Secret         string        `env:"JWT_SECRET,required" validate:"min=32"`
+	AccessTokenTTL time.Duration `env:"JWT_ACCESS_TTL" envDefault:"15m" validate:"gt=0"`
+	Issuer         string        `env:"JWT_ISSUER" envDefault:"credentials-vault" validate:"required"`
 }
 
 // Load — загружает конфигурацию из переменных окружения

@@ -11,7 +11,7 @@ package mocks
 
 import (
 	context "context"
-	model "credentials-vault/internal/model"
+	model "credentials-vault/internal/domain"
 	reflect "reflect"
 
 	gomock "go.uber.org/mock/gomock"

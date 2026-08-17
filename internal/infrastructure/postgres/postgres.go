@@ -4,7 +4,6 @@ package postgres
 import (
 	"context"
 	"database/sql"
-	"embed"
 	"fmt"
 	"time"
 
@@ -15,10 +14,8 @@ import (
 	"go.uber.org/zap"
 
 	"credentials-vault/internal/config"
+	"credentials-vault/migrations"
 )
-
-//go:embed migrations/*.sql
-var migrationsFS embed.FS
 
 // New создаёт подключение к PostgreSQL и применяет миграции.
 func New(cfg config.PostgresConfig, logger *zap.Logger) (*sql.DB, error) {
@@ -67,7 +64,7 @@ func runMigrations(cfg config.PostgresConfig, logger *zap.Logger) error {
 		return fmt.Errorf("failed to ping postgres for migrations: %w", err)
 	}
 
-	source, err := iofs.New(migrationsFS, "migrations")
+	source, err := iofs.New(migrations.FS, ".")
 	if err != nil {
 		return fmt.Errorf("failed to create migration source: %w", err)
 	}

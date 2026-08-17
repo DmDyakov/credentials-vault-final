@@ -240,9 +240,7 @@ func (x *LoginRequest) GetPassword() string {
 
 type LoginResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	AccessToken   string                 `protobuf:"bytes,1,opt,name=access_token,json=accessToken,proto3" json:"access_token,omitempty"`
-	ExpiresAt     *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"`
-	User          *User                  `protobuf:"bytes,3,opt,name=user,proto3" json:"user,omitempty"`
+	User          *User                  `protobuf:"bytes,1,opt,name=user,proto3" json:"user,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -277,20 +275,6 @@ func (*LoginResponse) Descriptor() ([]byte, []int) {
 	return file_auth_v1_auth_proto_rawDescGZIP(), []int{4}
 }
 
-func (x *LoginResponse) GetAccessToken() string {
-	if x != nil {
-		return x.AccessToken
-	}
-	return ""
-}
-
-func (x *LoginResponse) GetExpiresAt() *timestamppb.Timestamp {
-	if x != nil {
-		return x.ExpiresAt
-	}
-	return nil
-}
-
 func (x *LoginResponse) GetUser() *User {
 	if x != nil {
 		return x.User
@@ -316,12 +300,9 @@ const file_auth_v1_auth_proto_rawDesc = "" +
 	"\amessage\x18\x02 \x01(\tR\amessage\"F\n" +
 	"\fLoginRequest\x12\x1a\n" +
 	"\busername\x18\x01 \x01(\tR\busername\x12\x1a\n" +
-	"\bpassword\x18\x02 \x01(\tR\bpassword\"\xa2\x01\n" +
-	"\rLoginResponse\x12!\n" +
-	"\faccess_token\x18\x01 \x01(\tR\vaccessToken\x129\n" +
-	"\n" +
-	"expires_at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\texpiresAt\x123\n" +
-	"\x04user\x18\x03 \x01(\v2\x1f.credentials_vault.auth.v1.UserR\x04user2\xce\x01\n" +
+	"\bpassword\x18\x02 \x01(\tR\bpassword\"D\n" +
+	"\rLoginResponse\x123\n" +
+	"\x04user\x18\x01 \x01(\v2\x1f.credentials_vault.auth.v1.UserR\x04user2\xce\x01\n" +
 	"\vAuthService\x12c\n" +
 	"\bRegister\x12*.credentials_vault.auth.v1.RegisterRequest\x1a+.credentials_vault.auth.v1.RegisterResponse\x12Z\n" +
 	"\x05Login\x12'.credentials_vault.auth.v1.LoginRequest\x1a(.credentials_vault.auth.v1.LoginResponseB)Z'credentials-vault/gen/go/auth/v1;authv1b\x06proto3"
@@ -350,17 +331,16 @@ var file_auth_v1_auth_proto_goTypes = []any{
 var file_auth_v1_auth_proto_depIdxs = []int32{
 	5, // 0: credentials_vault.auth.v1.User.created_at:type_name -> google.protobuf.Timestamp
 	0, // 1: credentials_vault.auth.v1.RegisterResponse.user:type_name -> credentials_vault.auth.v1.User
-	5, // 2: credentials_vault.auth.v1.LoginResponse.expires_at:type_name -> google.protobuf.Timestamp
-	0, // 3: credentials_vault.auth.v1.LoginResponse.user:type_name -> credentials_vault.auth.v1.User
-	1, // 4: credentials_vault.auth.v1.AuthService.Register:input_type -> credentials_vault.auth.v1.RegisterRequest
-	3, // 5: credentials_vault.auth.v1.AuthService.Login:input_type -> credentials_vault.auth.v1.LoginRequest
-	2, // 6: credentials_vault.auth.v1.AuthService.Register:output_type -> credentials_vault.auth.v1.RegisterResponse
-	4, // 7: credentials_vault.auth.v1.AuthService.Login:output_type -> credentials_vault.auth.v1.LoginResponse
-	6, // [6:8] is the sub-list for method output_type
-	4, // [4:6] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	0, // 2: credentials_vault.auth.v1.LoginResponse.user:type_name -> credentials_vault.auth.v1.User
+	1, // 3: credentials_vault.auth.v1.AuthService.Register:input_type -> credentials_vault.auth.v1.RegisterRequest
+	3, // 4: credentials_vault.auth.v1.AuthService.Login:input_type -> credentials_vault.auth.v1.LoginRequest
+	2, // 5: credentials_vault.auth.v1.AuthService.Register:output_type -> credentials_vault.auth.v1.RegisterResponse
+	4, // 6: credentials_vault.auth.v1.AuthService.Login:output_type -> credentials_vault.auth.v1.LoginResponse
+	5, // [5:7] is the sub-list for method output_type
+	3, // [3:5] is the sub-list for method input_type
+	3, // [3:3] is the sub-list for extension type_name
+	3, // [3:3] is the sub-list for extension extendee
+	0, // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_auth_v1_auth_proto_init() }

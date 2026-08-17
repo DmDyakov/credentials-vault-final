@@ -9,7 +9,7 @@ import (
 	"credentials-vault/internal/config"
 	"credentials-vault/internal/infrastructure/postgres"
 	"credentials-vault/internal/repository"
-	"credentials-vault/internal/service/auth"
+	"credentials-vault/internal/service/user"
 	"credentials-vault/internal/transport/grpc"
 	"credentials-vault/pkg/jwt"
 
@@ -33,9 +33,10 @@ func New(cfg *config.Config, logger *zap.Logger) (*App, error) {
 	}
 
 	userRepo := repository.NewUserRepository(pg)
+	userService := user.NewService(userRepo)
+
 	jwtManager := jwt.New(cfg.JWT.Secret, cfg.JWT.AccessTokenTTL)
-	authService := auth.NewAuthService(userRepo, jwtManager)
-	grpcServer := grpc.NewServer(cfg, logger, authService)
+	grpcServer := grpc.NewServer(cfg, logger, userService, jwtManager)
 
 	return &App{
 		cfg:        cfg,

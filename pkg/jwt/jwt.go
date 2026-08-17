@@ -10,6 +10,12 @@ import (
 
 const issuer = "credentials-vault"
 
+type Token string
+
+func (t Token) String() string {
+	return string(t)
+}
+
 type Claims struct {
 	UserID string `json:"user_id"`
 	jwt.RegisteredClaims
@@ -27,7 +33,7 @@ func New(secret string, accessTTL time.Duration) *Manager {
 	}
 }
 
-func (m *Manager) Generate(userID string) (string, time.Time, error) {
+func (m *Manager) Generate(userID string) (Token, time.Time, error) {
 	expiresAt := time.Now().Add(m.accessTTL)
 
 	claims := Claims{
@@ -45,11 +51,12 @@ func (m *Manager) Generate(userID string) (string, time.Time, error) {
 		return "", time.Time{}, fmt.Errorf("failed to sign token: %w", err)
 	}
 
-	return signed, expiresAt, nil
+	return Token(signed), expiresAt, nil
 }
 
-func (m *Manager) Validate(tokenString string) (*Claims, error) {
-	token, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(t *jwt.Token) (interface{}, error) {
+// Verify проверяет и разбирает токен
+func (m *Manager) Verify(token Token) (*Claims, error) {
+	parsedToken, err := jwt.ParseWithClaims(token.String(), &Claims{}, func(t *jwt.Token) (interface{}, error) {
 		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
 		}
@@ -59,8 +66,8 @@ func (m *Manager) Validate(tokenString string) (*Claims, error) {
 		return nil, fmt.Errorf("failed to parse token: %w", err)
 	}
 
-	claims, ok := token.Claims.(*Claims)
-	if !ok || !token.Valid {
+	claims, ok := parsedToken.Claims.(*Claims)
+	if !ok || !parsedToken.Valid {
 		return nil, fmt.Errorf("invalid token")
 	}
 

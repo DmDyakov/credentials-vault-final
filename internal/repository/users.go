@@ -9,7 +9,7 @@ import (
 
 	"github.com/lib/pq"
 
-	"credentials-vault/internal/model"
+	"credentials-vault/internal/domain"
 )
 
 var (
@@ -25,7 +25,7 @@ func NewUserRepository(db *sql.DB) *UserRepository {
 	return &UserRepository{db: db}
 }
 
-func (r *UserRepository) Create(ctx context.Context, user *model.User) error {
+func (r *UserRepository) Create(ctx context.Context, user *domain.User) error {
 	query := `
         INSERT INTO users (username, password_hash)
         VALUES ($1, $2)
@@ -49,8 +49,8 @@ func (r *UserRepository) Create(ctx context.Context, user *model.User) error {
 	return nil
 }
 
-func (r *UserRepository) FindByUsername(ctx context.Context, username string) (*model.User, error) {
-	user := &model.User{}
+func (r *UserRepository) FindByUsername(ctx context.Context, username string) (*domain.User, error) {
+	user := &domain.User{}
 	query := `
         SELECT id, username, password_hash, created_at, updated_at
         FROM users

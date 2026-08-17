@@ -1,5 +1,4 @@
-// Package model содержит доменные модели.
-package model
+package domain
 
 import (
 	"time"

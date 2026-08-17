@@ -1,34 +1,27 @@
-package auth
+package user
 
 import (
 	"context"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
 	"golang.org/x/crypto/bcrypt"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 
-	pb "credentials-vault/gen/go/auth/v1"
-	"credentials-vault/internal/model"
-	"credentials-vault/internal/repository"
-	"credentials-vault/internal/service/auth/mocks"
-	"credentials-vault/pkg/jwt"
+	"credentials-vault/internal/domain"
+	"credentials-vault/internal/service/user/mocks"
 )
 
-func setupTest(t *testing.T) (*AuthService, *mocks.MockUserRepository) {
+func setupTest(t *testing.T) (*UserService, *mocks.MockUserRepository) {
 	t.Helper()
 
 	ctrl := gomock.NewController(t)
 	t.Cleanup(ctrl.Finish)
 
 	mockRepo := mocks.NewMockUserRepository(ctrl)
-	jwtManager := jwt.New("test-secret-123456789012345678901234567890", 24*time.Hour)
-	service := NewAuthService(mockRepo, jwtManager)
+	service := NewService(mockRepo)
 
 	return service, mockRepo
 }
@@ -38,44 +31,35 @@ func TestRegister_Success(t *testing.T) {
 
 	mockRepo.EXPECT().
 		FindByUsername(gomock.Any(), "testuser").
-		Return(nil, repository.ErrUserNotFound)
+		Return(nil, domain.ErrUserNotFound)
 
 	mockRepo.EXPECT().
 		Create(gomock.Any(), gomock.Any()).
-		DoAndReturn(func(ctx context.Context, user *model.User) error {
+		DoAndReturn(func(ctx context.Context, user *domain.User) error {
 			user.ID = uuid.New()
 			return nil
 		})
 
-	resp, err := service.Register(context.Background(), &pb.RegisterRequest{
-		Username: "testuser",
-		Password: "password123",
-	})
+	user, err := service.Register(context.Background(), "testuser", "password123")
 
 	assert.NoError(t, err)
-	assert.NotNil(t, resp.User)
-	assert.NotEmpty(t, resp.User.Id)
-	assert.Equal(t, "testuser", resp.User.Username)
-	assert.Equal(t, "User registered successfully", resp.Message)
+	assert.NotNil(t, user)
+	assert.NotEmpty(t, user.ID)
+	assert.Equal(t, "testuser", user.Username)
 }
 
 func TestRegister_DuplicateUser(t *testing.T) {
 	service, mockRepo := setupTest(t)
 
-	existingUser := &model.User{ID: uuid.New(), Username: "testuser"}
+	existingUser := &domain.User{ID: uuid.New(), Username: "testuser"}
 	mockRepo.EXPECT().
 		FindByUsername(gomock.Any(), "testuser").
 		Return(existingUser, nil)
 
-	_, err := service.Register(context.Background(), &pb.RegisterRequest{
-		Username: "testuser",
-		Password: "password123",
-	})
+	_, err := service.Register(context.Background(), "testuser", "password123")
 
 	assert.Error(t, err)
-	st, ok := status.FromError(err)
-	assert.True(t, ok)
-	assert.Equal(t, codes.AlreadyExists, st.Code())
+	assert.ErrorIs(t, err, domain.ErrUserAlreadyExists)
 }
 
 func TestRegister_Validation(t *testing.T) {
@@ -85,57 +69,52 @@ func TestRegister_Validation(t *testing.T) {
 		name     string
 		username string
 		password string
-		wantCode codes.Code
+		wantErr  error
 	}{
 		{
 			name:     "empty username",
 			username: "",
 			password: "password123",
-			wantCode: codes.InvalidArgument,
+			wantErr:  domain.ErrUsernameRequired,
 		},
 		{
 			name:     "short username",
 			username: "ab",
 			password: "password123",
-			wantCode: codes.InvalidArgument,
+			wantErr:  domain.ErrUsernameTooShort,
 		},
 		{
 			name:     "long username",
 			username: strings.Repeat("a", 65),
 			password: "password123",
-			wantCode: codes.InvalidArgument,
+			wantErr:  domain.ErrUsernameTooLong,
 		},
 		{
 			name:     "empty password",
 			username: "testuser",
 			password: "",
-			wantCode: codes.InvalidArgument,
+			wantErr:  domain.ErrPasswordRequired,
 		},
 		{
 			name:     "short password",
 			username: "testuser",
 			password: "123",
-			wantCode: codes.InvalidArgument,
+			wantErr:  domain.ErrPasswordTooShort,
 		},
 		{
 			name:     "long password",
 			username: "testuser",
 			password: strings.Repeat("p", 73),
-			wantCode: codes.InvalidArgument,
+			wantErr:  domain.ErrPasswordTooLong,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := service.Register(context.Background(), &pb.RegisterRequest{
-				Username: tt.username,
-				Password: tt.password,
-			})
+			_, err := service.Register(context.Background(), tt.username, tt.password)
 
 			assert.Error(t, err)
-			st, ok := status.FromError(err)
-			assert.True(t, ok)
-			assert.Equal(t, tt.wantCode, st.Code())
+			assert.ErrorIs(t, err, tt.wantErr)
 		})
 	}
 }
@@ -145,7 +124,7 @@ func TestLogin_Success(t *testing.T) {
 
 	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte("password123"), bcrypt.DefaultCost)
 
-	user := &model.User{
+	user := &domain.User{
 		ID:       uuid.New(),
 		Username: "testuser",
 		Password: string(hashedPassword),
@@ -155,14 +134,11 @@ func TestLogin_Success(t *testing.T) {
 		FindByUsername(gomock.Any(), "testuser").
 		Return(user, nil)
 
-	resp, err := service.Login(context.Background(), &pb.LoginRequest{
-		Username: "testuser",
-		Password: "password123",
-	})
+	loginUser, err := service.Login(context.Background(), "testuser", "password123")
 
 	assert.NoError(t, err)
-	assert.NotEmpty(t, resp.AccessToken)
-	assert.Equal(t, "testuser", resp.User.Username)
+	assert.NotNil(t, loginUser)
+	assert.Equal(t, "testuser", loginUser.Username)
 }
 
 func TestLogin_WrongPassword(t *testing.T) {
@@ -170,7 +146,7 @@ func TestLogin_WrongPassword(t *testing.T) {
 
 	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte("password123"), bcrypt.DefaultCost)
 
-	user := &model.User{
+	user := &domain.User{
 		ID:       uuid.New(),
 		Username: "testuser",
 		Password: string(hashedPassword),
@@ -180,15 +156,10 @@ func TestLogin_WrongPassword(t *testing.T) {
 		FindByUsername(gomock.Any(), "testuser").
 		Return(user, nil)
 
-	_, err := service.Login(context.Background(), &pb.LoginRequest{
-		Username: "testuser",
-		Password: "wrong-password",
-	})
+	_, err := service.Login(context.Background(), "testuser", "wrong-password")
 
 	assert.Error(t, err)
-	st, ok := status.FromError(err)
-	assert.True(t, ok)
-	assert.Equal(t, codes.Unauthenticated, st.Code())
+	assert.ErrorIs(t, err, domain.ErrInvalidCredentials)
 }
 
 func TestLogin_UserNotFound(t *testing.T) {
@@ -196,17 +167,12 @@ func TestLogin_UserNotFound(t *testing.T) {
 
 	mockRepo.EXPECT().
 		FindByUsername(gomock.Any(), "unknown").
-		Return(nil, repository.ErrUserNotFound)
+		Return(nil, domain.ErrUserNotFound)
 
-	_, err := service.Login(context.Background(), &pb.LoginRequest{
-		Username: "unknown",
-		Password: "password123",
-	})
+	_, err := service.Login(context.Background(), "unknown", "password123")
 
 	assert.Error(t, err)
-	st, ok := status.FromError(err)
-	assert.True(t, ok)
-	assert.Equal(t, codes.Unauthenticated, st.Code())
+	assert.ErrorIs(t, err, domain.ErrInvalidCredentials)
 }
 
 func TestLogin_Validation(t *testing.T) {
@@ -216,33 +182,28 @@ func TestLogin_Validation(t *testing.T) {
 		name     string
 		username string
 		password string
-		wantCode codes.Code
+		wantErr  error
 	}{
 		{
 			name:     "empty username",
 			username: "",
 			password: "password123",
-			wantCode: codes.InvalidArgument,
+			wantErr:  domain.ErrUsernameRequired,
 		},
 		{
 			name:     "empty password",
 			username: "testuser",
 			password: "",
-			wantCode: codes.InvalidArgument,
+			wantErr:  domain.ErrPasswordRequired,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := service.Login(context.Background(), &pb.LoginRequest{
-				Username: tt.username,
-				Password: tt.password,
-			})
+			_, err := service.Login(context.Background(), tt.username, tt.password)
 
 			assert.Error(t, err)
-			st, ok := status.FromError(err)
-			assert.True(t, ok)
-			assert.Equal(t, tt.wantCode, st.Code())
+			assert.ErrorIs(t, err, tt.wantErr)
 		})
 	}
 }

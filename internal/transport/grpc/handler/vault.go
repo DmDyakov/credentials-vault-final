@@ -2,7 +2,6 @@ package handler
 
 import (
 	"context"
-	"errors"
 
 	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
@@ -17,6 +16,7 @@ import (
 //go:generate mockgen -source=vault.go -destination=mocks/vault_service_mock.go -package=mocks VaultService
 type VaultService interface {
 	CreateItem(ctx context.Context, userID uuid.UUID, itemType domain.ItemType, encryptedData []byte, metadata map[string]string) (*domain.VaultItem, error)
+	GetItem(ctx context.Context, id uuid.UUID, userID uuid.UUID) (*domain.VaultItem, error)
 	ListItems(ctx context.Context, userID uuid.UUID, itemType *domain.ItemType) ([]*domain.VaultItem, error)
 }
 
@@ -51,10 +51,36 @@ func (h *VaultHandler) CreateItem(ctx context.Context, req *vaultpb.CreateItemRe
 
 	item, err := h.vaultService.CreateItem(ctx, userID, itemType, req.EncryptedData, req.Metadata)
 	if err != nil {
-		return nil, mapVaultError(err)
+		return nil, mapError(err)
 	}
 
 	return &vaultpb.CreateItemResponse{
+		Item: domainVaultItemToProto(item),
+	}, nil
+}
+
+// GetItem обрабатывает запрос на получение элемента по ID.
+func (h *VaultHandler) GetItem(ctx context.Context, req *vaultpb.GetItemRequest) (*vaultpb.GetItemResponse, error) {
+	if req == nil {
+		return nil, status.Error(codes.InvalidArgument, "request is nil")
+	}
+
+	userID, err := getUserIDFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	itemID, err := uuid.Parse(req.Id)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid item id")
+	}
+
+	item, err := h.vaultService.GetItem(ctx, itemID, userID)
+	if err != nil {
+		return nil, mapError(err)
+	}
+
+	return &vaultpb.GetItemResponse{
 		Item: domainVaultItemToProto(item),
 	}, nil
 }
@@ -81,7 +107,7 @@ func (h *VaultHandler) ListItems(ctx context.Context, req *vaultpb.ListItemsRequ
 
 	items, err := h.vaultService.ListItems(ctx, userID, itemType)
 	if err != nil {
-		return nil, mapVaultError(err)
+		return nil, mapError(err)
 	}
 
 	protoItems := make([]*vaultpb.VaultItem, 0, len(items))
@@ -155,19 +181,5 @@ func domainVaultItemToProto(item *domain.VaultItem) *vaultpb.VaultItem {
 		Metadata:      item.Metadata,
 		CreatedAt:     timestamppb.New(item.CreatedAt),
 		UpdatedAt:     timestamppb.New(item.UpdatedAt),
-	}
-}
-
-// mapVaultError маппит доменные ошибки в gRPC статусы.
-func mapVaultError(err error) error {
-	switch {
-	case errors.Is(err, domain.ErrInvalidItemType):
-		return status.Error(codes.InvalidArgument, "invalid item type")
-	case errors.Is(err, domain.ErrEncryptedDataRequired):
-		return status.Error(codes.InvalidArgument, "encrypted data is required")
-	case errors.Is(err, domain.ErrUserIDRequired):
-		return status.Error(codes.Unauthenticated, "user id is required")
-	default:
-		return status.Error(codes.Internal, "internal error")
 	}
 }

@@ -3,6 +3,7 @@ package vault
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
@@ -13,6 +14,7 @@ import (
 //go:generate mockgen -source=vault.go -destination=mocks/vault_repository_mock.go -package=mocks VaultRepository
 type VaultRepository interface {
 	Create(ctx context.Context, item *domain.VaultItem) error
+	FindByID(ctx context.Context, id uuid.UUID, userID uuid.UUID) (*domain.VaultItem, error)
 	FindByUserID(ctx context.Context, userID uuid.UUID, itemType *domain.ItemType) ([]*domain.VaultItem, error)
 }
 
@@ -53,6 +55,27 @@ func (s *VaultService) CreateItem(ctx context.Context, userID uuid.UUID, itemTyp
 
 	if err := s.repo.Create(ctx, item); err != nil {
 		return nil, fmt.Errorf("failed to create vault item: %w", err)
+	}
+
+	return item, nil
+}
+
+// GetItem возвращает элемент по ID.
+func (s *VaultService) GetItem(ctx context.Context, id uuid.UUID, userID uuid.UUID) (*domain.VaultItem, error) {
+	if id == uuid.Nil {
+		return nil, domain.ErrVaultItemIDRequired
+	}
+
+	if userID == uuid.Nil {
+		return nil, domain.ErrUserIDRequired
+	}
+
+	item, err := s.repo.FindByID(ctx, id, userID)
+	if err != nil {
+		if errors.Is(err, domain.ErrVaultItemNotFound) {
+			return nil, domain.ErrVaultItemNotFound
+		}
+		return nil, fmt.Errorf("failed to get vault item: %w", err)
 	}
 
 	return item, nil

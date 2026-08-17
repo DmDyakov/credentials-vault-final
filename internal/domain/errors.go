@@ -20,4 +20,5 @@ var (
 	ErrInvalidItemType       = errors.New("invalid item type")
 	ErrEncryptedDataRequired = errors.New("encrypted data is required")
 	ErrUserIDRequired        = errors.New("user id is required")
+	ErrVaultItemIDRequired   = errors.New("vault item id is required")
 )

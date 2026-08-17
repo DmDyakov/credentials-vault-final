@@ -56,6 +56,21 @@ func (mr *MockVaultRepositoryMockRecorder) Create(ctx, item any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockVaultRepository)(nil).Create), ctx, item)
 }
 
+// FindByID mocks base method.
+func (m *MockVaultRepository) FindByID(ctx context.Context, id, userID uuid.UUID) (*domain.VaultItem, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FindByID", ctx, id, userID)
+	ret0, _ := ret[0].(*domain.VaultItem)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// FindByID indicates an expected call of FindByID.
+func (mr *MockVaultRepositoryMockRecorder) FindByID(ctx, id, userID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindByID", reflect.TypeOf((*MockVaultRepository)(nil).FindByID), ctx, id, userID)
+}
+
 // FindByUserID mocks base method.
 func (m *MockVaultRepository) FindByUserID(ctx context.Context, userID uuid.UUID, itemType *domain.ItemType) ([]*domain.VaultItem, error) {
 	m.ctrl.T.Helper()

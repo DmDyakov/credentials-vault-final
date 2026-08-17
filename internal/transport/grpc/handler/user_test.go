@@ -83,7 +83,7 @@ func TestRegister_DuplicateUser(t *testing.T) {
 	st, ok := status.FromError(err)
 	assert.True(t, ok)
 	assert.Equal(t, codes.AlreadyExists, st.Code())
-	assert.Equal(t, "username already exists", st.Message())
+	assert.Equal(t, "user already exists", st.Message())
 }
 
 func TestRegister_ValidationErrors(t *testing.T) {

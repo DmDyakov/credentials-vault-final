@@ -3,7 +3,6 @@ package handler
 
 import (
 	"context"
-	"errors"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -37,7 +36,7 @@ func (h *AuthHandler) Register(ctx context.Context, req *authpb.RegisterRequest)
 
 	user, err := h.userService.Register(ctx, req.Username, req.Password)
 	if err != nil {
-		return nil, mapAuthError(err)
+		return nil, mapError(err)
 	}
 
 	return &authpb.RegisterResponse{
@@ -53,31 +52,12 @@ func (h *AuthHandler) Login(ctx context.Context, req *authpb.LoginRequest) (*aut
 
 	user, err := h.userService.Login(ctx, req.Username, req.Password)
 	if err != nil {
-		return nil, mapAuthError(err)
+		return nil, mapError(err)
 	}
 
 	return &authpb.LoginResponse{
 		User: domainUserToProto(user),
 	}, nil
-}
-
-// mapAuthError маппит доменные ошибки в gRPC статусы
-func mapAuthError(err error) error {
-	switch {
-	case errors.Is(err, domain.ErrUserAlreadyExists):
-		return status.Error(codes.AlreadyExists, "username already exists")
-	case errors.Is(err, domain.ErrInvalidCredentials):
-		return status.Error(codes.Unauthenticated, "invalid username or password")
-	case errors.Is(err, domain.ErrUsernameRequired),
-		errors.Is(err, domain.ErrPasswordRequired),
-		errors.Is(err, domain.ErrUsernameTooShort),
-		errors.Is(err, domain.ErrUsernameTooLong),
-		errors.Is(err, domain.ErrPasswordTooShort),
-		errors.Is(err, domain.ErrPasswordTooLong):
-		return status.Error(codes.InvalidArgument, err.Error())
-	default:
-		return status.Error(codes.Internal, "internal error")
-	}
 }
 
 // domainUserToProto конвертирует доменную модель в proto

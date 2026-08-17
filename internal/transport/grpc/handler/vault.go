@@ -17,6 +17,7 @@ import (
 //go:generate mockgen -source=vault.go -destination=mocks/vault_service_mock.go -package=mocks VaultService
 type VaultService interface {
 	CreateItem(ctx context.Context, userID uuid.UUID, itemType domain.ItemType, encryptedData []byte, metadata map[string]string) (*domain.VaultItem, error)
+	ListItems(ctx context.Context, userID uuid.UUID, itemType *domain.ItemType) ([]*domain.VaultItem, error)
 }
 
 // VaultHandler - gRPC обработчик хранилища.
@@ -55,6 +56,41 @@ func (h *VaultHandler) CreateItem(ctx context.Context, req *vaultpb.CreateItemRe
 
 	return &vaultpb.CreateItemResponse{
 		Item: domainVaultItemToProto(item),
+	}, nil
+}
+
+// ListItems обрабатывает запрос на получение списка элементов.
+func (h *VaultHandler) ListItems(ctx context.Context, req *vaultpb.ListItemsRequest) (*vaultpb.ListItemsResponse, error) {
+	if req == nil {
+		return nil, status.Error(codes.InvalidArgument, "request is nil")
+	}
+
+	userID, err := getUserIDFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	var itemType *domain.ItemType
+	if req.Type != vaultpb.ItemType_ITEM_TYPE_UNSPECIFIED {
+		t := protoItemTypeToDomain(req.Type)
+		if t == "" {
+			return nil, status.Error(codes.InvalidArgument, "invalid item type")
+		}
+		itemType = &t
+	}
+
+	items, err := h.vaultService.ListItems(ctx, userID, itemType)
+	if err != nil {
+		return nil, mapVaultError(err)
+	}
+
+	protoItems := make([]*vaultpb.VaultItem, 0, len(items))
+	for _, item := range items {
+		protoItems = append(protoItems, domainVaultItemToProto(item))
+	}
+
+	return &vaultpb.ListItemsResponse{
+		Items: protoItems,
 	}, nil
 }
 

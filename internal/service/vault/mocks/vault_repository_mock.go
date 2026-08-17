@@ -14,6 +14,7 @@ import (
 	domain "credentials-vault/internal/domain"
 	reflect "reflect"
 
+	uuid "github.com/google/uuid"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -53,4 +54,19 @@ func (m *MockVaultRepository) Create(ctx context.Context, item *domain.VaultItem
 func (mr *MockVaultRepositoryMockRecorder) Create(ctx, item any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockVaultRepository)(nil).Create), ctx, item)
+}
+
+// FindByUserID mocks base method.
+func (m *MockVaultRepository) FindByUserID(ctx context.Context, userID uuid.UUID, itemType *domain.ItemType) ([]*domain.VaultItem, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FindByUserID", ctx, userID, itemType)
+	ret0, _ := ret[0].([]*domain.VaultItem)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// FindByUserID indicates an expected call of FindByUserID.
+func (mr *MockVaultRepositoryMockRecorder) FindByUserID(ctx, userID, itemType any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindByUserID", reflect.TypeOf((*MockVaultRepository)(nil).FindByUserID), ctx, userID, itemType)
 }

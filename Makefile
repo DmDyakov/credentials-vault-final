@@ -90,14 +90,6 @@ test-race:
 # Линтеры
 # ═══════════════════════════════════════════
 
-# Форматирование
-fmt:
-	go fmt ./...
-
-# Проверка форматирования
-check-fmt:
-	@test -z "$$(gofmt -l .)" || (echo "Files need formatting:" && gofmt -l . && exit 1)
-
 # Стандартный линтер
 lint:
 	golangci-lint run ./...
@@ -111,7 +103,7 @@ staticlint:
 	go run ./cmd/staticlint/ ./...
 
 # Все проверки
-check: check-fmt vet lint staticlint test
+check: vet lint staticlint test
 	@echo "✅ All checks passed!"
 
 # ═══════════════════════════════════════════

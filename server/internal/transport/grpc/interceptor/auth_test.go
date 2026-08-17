@@ -14,8 +14,8 @@ import (
 	"google.golang.org/grpc/status"
 
 	authpb "credentials-vault/gen/go/auth/v1"
-	"credentials-vault/server/internal/transport/grpc/interceptor/mocks"
 	"credentials-vault/pkg/jwt"
+	"credentials-vault/server/internal/transport/grpc/interceptor/mocks"
 )
 
 // mockServerTransportStream - мок для grpc.ServerTransportStream

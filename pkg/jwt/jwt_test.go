@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestGenerateAndVerifyn(t *testing.T) {
+func TestGenerateAndVerify(t *testing.T) {
 	m := New("test-secret-12345678901234567890", 24*time.Hour)
 
 	token, expiresAt, err := m.Generate("user-123")

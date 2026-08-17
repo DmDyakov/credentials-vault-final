@@ -85,3 +85,17 @@ func (mr *MockVaultRepositoryMockRecorder) FindByUserID(ctx, userID, itemType an
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindByUserID", reflect.TypeOf((*MockVaultRepository)(nil).FindByUserID), ctx, userID, itemType)
 }
+
+// Update mocks base method.
+func (m *MockVaultRepository) Update(ctx context.Context, item *domain.VaultItem) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Update", ctx, item)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Update indicates an expected call of Update.
+func (mr *MockVaultRepositoryMockRecorder) Update(ctx, item any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Update", reflect.TypeOf((*MockVaultRepository)(nil).Update), ctx, item)
+}

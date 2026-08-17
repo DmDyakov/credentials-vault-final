@@ -31,6 +31,7 @@ type VaultService interface {
 	GetItem(ctx context.Context, id uuid.UUID, userID uuid.UUID) (*domain.VaultItem, error)
 	ListItems(ctx context.Context, userID uuid.UUID, itemType *domain.ItemType) ([]*domain.VaultItem, error)
 	UpdateItem(ctx context.Context, id uuid.UUID, userID uuid.UUID, encryptedData []byte, metadata map[string]string) (*domain.VaultItem, error)
+	DeleteItem(ctx context.Context, id uuid.UUID, userID uuid.UUID) error
 }
 
 type JWTManager interface {

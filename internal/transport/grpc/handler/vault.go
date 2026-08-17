@@ -17,6 +17,7 @@ type VaultService interface {
 	GetItem(ctx context.Context, id uuid.UUID, userID uuid.UUID) (*domain.VaultItem, error)
 	ListItems(ctx context.Context, userID uuid.UUID, itemType *domain.ItemType) ([]*domain.VaultItem, error)
 	UpdateItem(ctx context.Context, id uuid.UUID, userID uuid.UUID, encryptedData []byte, metadata map[string]string) (*domain.VaultItem, error)
+	DeleteItem(ctx context.Context, id uuid.UUID, userID uuid.UUID) error
 }
 
 // VaultHandler - gRPC обработчик хранилища.
@@ -107,6 +108,31 @@ func (h *VaultHandler) UpdateItem(ctx context.Context, req *vaultpb.UpdateItemRe
 
 	return &vaultpb.UpdateItemResponse{
 		Item: toProtoVaultItem(item),
+	}, nil
+}
+
+// DeleteItem обрабатывает запрос на мягкое удаление элемента.
+func (h *VaultHandler) DeleteItem(ctx context.Context, req *vaultpb.DeleteItemRequest) (*vaultpb.DeleteItemResponse, error) {
+	if req == nil {
+		return nil, status.Error(codes.InvalidArgument, "request is nil")
+	}
+
+	userID, err := getUserIDFromMetadata(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	itemID, err := uuid.Parse(req.Id)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid item id")
+	}
+
+	if err := h.vaultService.DeleteItem(ctx, itemID, userID); err != nil {
+		return nil, mapError(err)
+	}
+
+	return &vaultpb.DeleteItemResponse{
+		Message: "Item deleted successfully",
 	}, nil
 }
 

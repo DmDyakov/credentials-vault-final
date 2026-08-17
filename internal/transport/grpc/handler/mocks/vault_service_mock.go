@@ -57,6 +57,20 @@ func (mr *MockVaultServiceMockRecorder) CreateItem(ctx, userID, itemType, encryp
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateItem", reflect.TypeOf((*MockVaultService)(nil).CreateItem), ctx, userID, itemType, encryptedData, metadata)
 }
 
+// DeleteItem mocks base method.
+func (m *MockVaultService) DeleteItem(ctx context.Context, id, userID uuid.UUID) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteItem", ctx, id, userID)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteItem indicates an expected call of DeleteItem.
+func (mr *MockVaultServiceMockRecorder) DeleteItem(ctx, id, userID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteItem", reflect.TypeOf((*MockVaultService)(nil).DeleteItem), ctx, id, userID)
+}
+
 // GetItem mocks base method.
 func (m *MockVaultService) GetItem(ctx context.Context, id, userID uuid.UUID) (*domain.VaultItem, error) {
 	m.ctrl.T.Helper()

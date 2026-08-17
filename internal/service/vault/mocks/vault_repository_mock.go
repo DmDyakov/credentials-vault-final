@@ -86,6 +86,20 @@ func (mr *MockVaultRepositoryMockRecorder) FindByUserID(ctx, userID, itemType an
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindByUserID", reflect.TypeOf((*MockVaultRepository)(nil).FindByUserID), ctx, userID, itemType)
 }
 
+// SoftDelete mocks base method.
+func (m *MockVaultRepository) SoftDelete(ctx context.Context, id, userID uuid.UUID) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SoftDelete", ctx, id, userID)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SoftDelete indicates an expected call of SoftDelete.
+func (mr *MockVaultRepositoryMockRecorder) SoftDelete(ctx, id, userID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SoftDelete", reflect.TypeOf((*MockVaultRepository)(nil).SoftDelete), ctx, id, userID)
+}
+
 // Update mocks base method.
 func (m *MockVaultRepository) Update(ctx context.Context, item *domain.VaultItem) error {
 	m.ctrl.T.Helper()

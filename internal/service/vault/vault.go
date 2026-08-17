@@ -17,6 +17,7 @@ type VaultRepository interface {
 	FindByID(ctx context.Context, id uuid.UUID, userID uuid.UUID) (*domain.VaultItem, error)
 	FindByUserID(ctx context.Context, userID uuid.UUID, itemType *domain.ItemType) ([]*domain.VaultItem, error)
 	Update(ctx context.Context, item *domain.VaultItem) error
+	SoftDelete(ctx context.Context, id uuid.UUID, userID uuid.UUID) error
 }
 
 type VaultService struct {
@@ -115,6 +116,26 @@ func (s *VaultService) UpdateItem(ctx context.Context, id uuid.UUID, userID uuid
 	}
 
 	return item, nil
+}
+
+// DeleteItem мягко удаляет элемент хранилища.
+func (s *VaultService) DeleteItem(ctx context.Context, id uuid.UUID, userID uuid.UUID) error {
+	if id == uuid.Nil {
+		return domain.ErrVaultItemIDRequired
+	}
+
+	if userID == uuid.Nil {
+		return domain.ErrUserIDRequired
+	}
+
+	if err := s.repo.SoftDelete(ctx, id, userID); err != nil {
+		if errors.Is(err, domain.ErrVaultItemNotFound) {
+			return domain.ErrVaultItemNotFound
+		}
+		return fmt.Errorf("failed to delete vault item: %w", err)
+	}
+
+	return nil
 }
 
 // ListItems возвращает список элементов пользователя.

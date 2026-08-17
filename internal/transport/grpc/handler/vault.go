@@ -5,9 +5,7 @@ import (
 
 	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/types/known/timestamppb"
 
 	vaultpb "credentials-vault/gen/go/vault/v1"
 	"credentials-vault/internal/domain"
@@ -18,6 +16,7 @@ type VaultService interface {
 	CreateItem(ctx context.Context, userID uuid.UUID, itemType domain.ItemType, encryptedData []byte, metadata map[string]string) (*domain.VaultItem, error)
 	GetItem(ctx context.Context, id uuid.UUID, userID uuid.UUID) (*domain.VaultItem, error)
 	ListItems(ctx context.Context, userID uuid.UUID, itemType *domain.ItemType) ([]*domain.VaultItem, error)
+	UpdateItem(ctx context.Context, id uuid.UUID, userID uuid.UUID, encryptedData []byte, metadata map[string]string) (*domain.VaultItem, error)
 }
 
 // VaultHandler - gRPC обработчик хранилища.
@@ -39,12 +38,12 @@ func (h *VaultHandler) CreateItem(ctx context.Context, req *vaultpb.CreateItemRe
 		return nil, status.Error(codes.InvalidArgument, "request is nil")
 	}
 
-	userID, err := getUserIDFromContext(ctx)
+	userID, err := getUserIDFromMetadata(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	itemType := protoItemTypeToDomain(req.Type)
+	itemType := toDomainVaultItemType(req.Type)
 	if itemType == "" {
 		return nil, status.Error(codes.InvalidArgument, "item type is required")
 	}
@@ -55,7 +54,7 @@ func (h *VaultHandler) CreateItem(ctx context.Context, req *vaultpb.CreateItemRe
 	}
 
 	return &vaultpb.CreateItemResponse{
-		Item: domainVaultItemToProto(item),
+		Item: toProtoVaultItem(item),
 	}, nil
 }
 
@@ -65,7 +64,7 @@ func (h *VaultHandler) GetItem(ctx context.Context, req *vaultpb.GetItemRequest)
 		return nil, status.Error(codes.InvalidArgument, "request is nil")
 	}
 
-	userID, err := getUserIDFromContext(ctx)
+	userID, err := getUserIDFromMetadata(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -81,7 +80,33 @@ func (h *VaultHandler) GetItem(ctx context.Context, req *vaultpb.GetItemRequest)
 	}
 
 	return &vaultpb.GetItemResponse{
-		Item: domainVaultItemToProto(item),
+		Item: toProtoVaultItem(item),
+	}, nil
+}
+
+// UpdateItem обрабатывает запрос на обновление элемента.
+func (h *VaultHandler) UpdateItem(ctx context.Context, req *vaultpb.UpdateItemRequest) (*vaultpb.UpdateItemResponse, error) {
+	if req == nil {
+		return nil, status.Error(codes.InvalidArgument, "request is nil")
+	}
+
+	userID, err := getUserIDFromMetadata(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	itemID, err := uuid.Parse(req.Id)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid item id")
+	}
+
+	item, err := h.vaultService.UpdateItem(ctx, itemID, userID, req.EncryptedData, req.Metadata)
+	if err != nil {
+		return nil, mapError(err)
+	}
+
+	return &vaultpb.UpdateItemResponse{
+		Item: toProtoVaultItem(item),
 	}, nil
 }
 
@@ -91,14 +116,14 @@ func (h *VaultHandler) ListItems(ctx context.Context, req *vaultpb.ListItemsRequ
 		return nil, status.Error(codes.InvalidArgument, "request is nil")
 	}
 
-	userID, err := getUserIDFromContext(ctx)
+	userID, err := getUserIDFromMetadata(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	var itemType *domain.ItemType
 	if req.Type != vaultpb.ItemType_ITEM_TYPE_UNSPECIFIED {
-		t := protoItemTypeToDomain(req.Type)
+		t := toDomainVaultItemType(req.Type)
 		if t == "" {
 			return nil, status.Error(codes.InvalidArgument, "invalid item type")
 		}
@@ -112,74 +137,10 @@ func (h *VaultHandler) ListItems(ctx context.Context, req *vaultpb.ListItemsRequ
 
 	protoItems := make([]*vaultpb.VaultItem, 0, len(items))
 	for _, item := range items {
-		protoItems = append(protoItems, domainVaultItemToProto(item))
+		protoItems = append(protoItems, toProtoVaultItem(item))
 	}
 
 	return &vaultpb.ListItemsResponse{
 		Items: protoItems,
 	}, nil
-}
-
-// getUserIDFromContext извлекает user_id из gRPC метаданных.
-func getUserIDFromContext(ctx context.Context) (uuid.UUID, error) {
-	md, ok := metadata.FromIncomingContext(ctx)
-	if !ok {
-		return uuid.Nil, status.Error(codes.Unauthenticated, "metadata is not provided")
-	}
-
-	values := md.Get("user_id")
-	if len(values) == 0 {
-		return uuid.Nil, status.Error(codes.Unauthenticated, "user_id is not provided")
-	}
-
-	userID, err := uuid.Parse(values[0])
-	if err != nil {
-		return uuid.Nil, status.Error(codes.Unauthenticated, "invalid user_id")
-	}
-
-	return userID, nil
-}
-
-// protoItemTypeToDomain конвертирует proto ItemType в domain ItemType.
-func protoItemTypeToDomain(protoType vaultpb.ItemType) domain.ItemType {
-	switch protoType {
-	case vaultpb.ItemType_ITEM_TYPE_LOGIN:
-		return domain.ItemTypeLogin
-	case vaultpb.ItemType_ITEM_TYPE_CARD:
-		return domain.ItemTypeCard
-	case vaultpb.ItemType_ITEM_TYPE_TEXT:
-		return domain.ItemTypeText
-	case vaultpb.ItemType_ITEM_TYPE_BINARY:
-		return domain.ItemTypeBinary
-	default:
-		return ""
-	}
-}
-
-// domainItemTypeToProto конвертирует domain ItemType в proto ItemType.
-func domainItemTypeToProto(itemType domain.ItemType) vaultpb.ItemType {
-	switch itemType {
-	case domain.ItemTypeLogin:
-		return vaultpb.ItemType_ITEM_TYPE_LOGIN
-	case domain.ItemTypeCard:
-		return vaultpb.ItemType_ITEM_TYPE_CARD
-	case domain.ItemTypeText:
-		return vaultpb.ItemType_ITEM_TYPE_TEXT
-	case domain.ItemTypeBinary:
-		return vaultpb.ItemType_ITEM_TYPE_BINARY
-	default:
-		return vaultpb.ItemType_ITEM_TYPE_UNSPECIFIED
-	}
-}
-
-// domainVaultItemToProto конвертирует domain VaultItem в proto VaultItem.
-func domainVaultItemToProto(item *domain.VaultItem) *vaultpb.VaultItem {
-	return &vaultpb.VaultItem{
-		Id:            item.ID.String(),
-		Type:          domainItemTypeToProto(item.Type),
-		EncryptedData: item.EncryptedData,
-		Metadata:      item.Metadata,
-		CreatedAt:     timestamppb.New(item.CreatedAt),
-		UpdatedAt:     timestamppb.New(item.UpdatedAt),
-	}
 }

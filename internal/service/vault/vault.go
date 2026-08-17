@@ -16,6 +16,7 @@ type VaultRepository interface {
 	Create(ctx context.Context, item *domain.VaultItem) error
 	FindByID(ctx context.Context, id uuid.UUID, userID uuid.UUID) (*domain.VaultItem, error)
 	FindByUserID(ctx context.Context, userID uuid.UUID, itemType *domain.ItemType) ([]*domain.VaultItem, error)
+	Update(ctx context.Context, item *domain.VaultItem) error
 }
 
 type VaultService struct {
@@ -76,6 +77,41 @@ func (s *VaultService) GetItem(ctx context.Context, id uuid.UUID, userID uuid.UU
 			return nil, domain.ErrVaultItemNotFound
 		}
 		return nil, fmt.Errorf("failed to get vault item: %w", err)
+	}
+
+	return item, nil
+}
+
+// UpdateItem обновляет элемент хранилища.
+func (s *VaultService) UpdateItem(ctx context.Context, id uuid.UUID, userID uuid.UUID, encryptedData []byte, metadata map[string]string) (*domain.VaultItem, error) {
+	if id == uuid.Nil {
+		return nil, domain.ErrVaultItemIDRequired
+	}
+
+	if userID == uuid.Nil {
+		return nil, domain.ErrUserIDRequired
+	}
+
+	if len(encryptedData) == 0 {
+		return nil, domain.ErrEncryptedDataRequired
+	}
+
+	if metadata == nil {
+		metadata = make(map[string]string)
+	}
+
+	item := &domain.VaultItem{
+		ID:            id,
+		UserID:        userID,
+		EncryptedData: encryptedData,
+		Metadata:      metadata,
+	}
+
+	if err := s.repo.Update(ctx, item); err != nil {
+		if errors.Is(err, domain.ErrVaultItemNotFound) {
+			return nil, domain.ErrVaultItemNotFound
+		}
+		return nil, fmt.Errorf("failed to update vault item: %w", err)
 	}
 
 	return item, nil

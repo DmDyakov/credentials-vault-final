@@ -257,7 +257,7 @@ func TestDomainUserToProto(t *testing.T) {
 		Username: "testuser",
 	}
 
-	protoUser := domainUserToProto(user)
+	protoUser := toProtoUser(user)
 
 	assert.NotNil(t, protoUser)
 	assert.Equal(t, userID.String(), protoUser.Id)

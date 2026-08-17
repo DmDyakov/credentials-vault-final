@@ -6,7 +6,6 @@ import (
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/types/known/timestamppb"
 
 	authpb "credentials-vault/gen/go/auth/v1"
 	"credentials-vault/internal/domain"
@@ -40,7 +39,7 @@ func (h *AuthHandler) Register(ctx context.Context, req *authpb.RegisterRequest)
 	}
 
 	return &authpb.RegisterResponse{
-		User:    domainUserToProto(user),
+		User:    toProtoUser(user),
 		Message: "User registered successfully",
 	}, nil
 }
@@ -56,15 +55,6 @@ func (h *AuthHandler) Login(ctx context.Context, req *authpb.LoginRequest) (*aut
 	}
 
 	return &authpb.LoginResponse{
-		User: domainUserToProto(user),
+		User: toProtoUser(user),
 	}, nil
-}
-
-// domainUserToProto конвертирует доменную модель в proto
-func domainUserToProto(user *domain.User) *authpb.User {
-	return &authpb.User{
-		Id:        user.ID.String(),
-		Username:  user.Username,
-		CreatedAt: timestamppb.New(user.CreatedAt),
-	}
 }

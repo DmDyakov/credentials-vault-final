@@ -12,11 +12,6 @@ import (
 	"credentials-vault/internal/domain"
 )
 
-var (
-	ErrUserNotFound      = errors.New("user not found")
-	ErrUserAlreadyExists = errors.New("user already exists")
-)
-
 type UserRepository struct {
 	db *sql.DB
 }
@@ -41,7 +36,7 @@ func (r *UserRepository) Create(ctx context.Context, user *domain.User) error {
 
 	if err != nil {
 		if pqErr, ok := err.(*pq.Error); ok && pqErr.Code == "23505" {
-			return ErrUserAlreadyExists
+			return domain.ErrUserAlreadyExists
 		}
 		return fmt.Errorf("create user: %w", err)
 	}
@@ -67,7 +62,7 @@ func (r *UserRepository) FindByUsername(ctx context.Context, username string) (*
 
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, ErrUserNotFound
+			return nil, domain.ErrUserNotFound
 		}
 		return nil, fmt.Errorf("find user by username: %w", err)
 	}

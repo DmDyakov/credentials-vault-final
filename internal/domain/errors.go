@@ -14,3 +14,7 @@ var (
 	ErrPasswordTooShort   = errors.New("password must be at least 6 characters")
 	ErrPasswordTooLong    = errors.New("password must be at most 72 characters")
 )
+
+var (
+	ErrVaultItemNotFound = errors.New("vault item not found")
+)

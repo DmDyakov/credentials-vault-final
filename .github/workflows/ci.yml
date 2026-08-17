@@ -15,7 +15,7 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version-file: 'go.mod'
+          go-version-file: 'go.work'
           cache: true
 
       - name: Install golangci-lint
@@ -39,7 +39,7 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version-file: 'go.mod'
+          go-version-file: 'go.work'
           cache: true
 
       - name: Tests with coverage

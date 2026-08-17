@@ -1,0 +1,9 @@
+go 1.26.4
+
+use (
+	./client-cli
+	./gen
+	./pkg
+	./server
+	./tools/staticlint
+)

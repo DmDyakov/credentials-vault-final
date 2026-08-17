@@ -6,23 +6,32 @@
 ## Быстрый старт
 
 ```bash
-make prod
-grpcurl -plaintext localhost:9090 list
+make prod          # запуск в Docker
+make dev           # локальная разработка
+make build-all     # сборка всех бинарников
 ```
 
-## Разработка
+## Тестирование
 
 ```bash
-make dev
+make check         # все проверки
+make test          # тесты
+make test-coverage # покрытие
 ```
 
-## Полезные команды
+## API
 
-```bash
-make proto           # генерация gRPC-кода
-make build           # сборка бинарника
-make test            # тесты
-make test-coverage   # покрытие
-make lint            # golangci-lint
-make staticlint      # кастомный анализатор
-```
+gRPC сервисы описаны в `api/proto/`:
+
+- `auth/v1/auth.proto` — регистрация и вход
+- `vault/v1/vault.proto` — хранение данных
+
+## Структура
+
+Монорепо с Go workspace:
+
+- `server/` — gRPC сервер
+- `client-cli/` — CLI клиент
+- `gen/` — сгенерированный код
+- `pkg/` — общие пакеты
+- `tools/` — инструменты разработки

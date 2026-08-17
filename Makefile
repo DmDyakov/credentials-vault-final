@@ -4,10 +4,15 @@ COMMIT := $(shell git rev-parse HEAD 2>/dev/null || echo "unknown")
 
 LDFLAGS := -X credentials-vault/pkg/buildinfo.Version=$(VERSION) \
            -X credentials-vault/pkg/buildinfo.Date=$(DATE) \
-           -X credentials-vault/pkg/buildinfo.Commit=$(COMMIT)
+           -X credentials-vault/pkg/buildinfo.Commit=$(COMMIT) \
+           -s -w
 
-.PHONY: proto mocks generate setup build dev prod down test test-coverage test-coverage-html check-fmt fmt lint staticlint \
-        migrate-up migrate-down migrate-status docker-logs docker-ps docker-rebuild clean
+MODULES := server client-cli gen pkg tools/staticlint
+
+.PHONY: proto mocks generate setup build build-cli build-all dev prod down test test-coverage test-coverage-html test-race \
+        check-fmt fmt lint vet staticlint check \
+        migrate-up migrate-down migrate-status docker-logs docker-logs-db docker-ps docker-rebuild \
+        clean clean-all
 
 # ═══════════════════════════════════════════
 # Генерация и сборка
@@ -15,32 +20,42 @@ LDFLAGS := -X credentials-vault/pkg/buildinfo.Version=$(VERSION) \
 
 # Генерация gRPC-кода
 proto:
-	mkdir -p gen/go
+	mkdir -p gen/auth/v1 gen/vault/v1
 	protoc \
 		-I api/proto \
-		--go_out=gen/go \
+		--go_out=gen \
 		--go_opt=paths=source_relative \
-		--go-grpc_out=gen/go \
+		--go-grpc_out=gen \
 		--go-grpc_opt=paths=source_relative \
 		api/proto/auth/v1/auth.proto \
 		api/proto/vault/v1/vault.proto
 
 # Генерация моков
 mocks:
-	go generate ./...
+	go generate -C server ./...
+	go generate -C client-cli ./...
 
 # Генерация всего (proto + mocks)
 generate: proto mocks
 
 # Полная настройка: зависимости, генерация, сборка
 setup: generate
-	go mod tidy
-	make build
+	go work sync
+	make build-all
 
-# Сборка бинарника
+# Сборка сервера
 build:
 	mkdir -p bin
-	go build -ldflags "$(LDFLAGS)" -o bin/server ./cmd/server
+	go build -C server -trimpath -ldflags "$(LDFLAGS)" -o ../bin/server ./cmd/server
+
+# Сборка CLI
+build-cli:
+	mkdir -p bin
+	go build -C client-cli -trimpath -ldflags "$(LDFLAGS)" -o ../bin/credvault ./cmd/cli
+
+# Сборка всех бинарников
+build-all: build build-cli
+	@echo "✅ All binaries built!"
 
 # ═══════════════════════════════════════════
 # Окружения
@@ -49,7 +64,7 @@ build:
 # Dev-окружение
 dev:
 	docker compose --env-file .env.dev up -d --no-deps postgres
-	@bash -c 'set -a && source .env.dev && set +a && go run ./cmd/server'
+	@bash -c 'set -a && source .env.dev && set +a && go run -C server ./cmd/server'
 
 # Prod-окружение: всё в Docker
 prod:
@@ -69,38 +84,72 @@ down-clean:
 
 # Тесты
 test:
-	go test ./...
+	@for mod in $(MODULES); do \
+		echo "=== test $$mod ==="; \
+		go test -C $$mod ./... || exit 1; \
+	done
 
 # Тесты с покрытием
 test-coverage:
-	go test -coverprofile=coverage.out ./...
-	go tool cover -func=coverage.out
+	@for mod in $(MODULES); do \
+		echo "=== test-coverage $$mod ==="; \
+		coverage_file="coverage_$$(echo $$mod | tr '/' '_').out"; \
+		go test -C $$mod -coverprofile=$$coverage_file -covermode=atomic ./... || exit 1; \
+	done
+	@echo "Coverage files: coverage_*.out"
 
 # HTML отчет покрытия
 test-coverage-html:
-	go test -coverprofile=coverage.out ./...
-	go tool cover -html=coverage.out -o coverage.html
+	@make test-coverage
+	@go tool cover -html=coverage_server.out -o coverage.html
 	@echo "Coverage report: coverage.html"
 
 # Тесты с race detector
 test-race:
-	go test -race ./...
+	@for mod in $(MODULES); do \
+		echo "=== test-race $$mod ==="; \
+		go test -race -C $$mod ./... || exit 1; \
+	done
 
 # ═══════════════════════════════════════════
 # Линтеры
 # ═══════════════════════════════════════════
 
+# Форматирование
+fmt:
+	@for mod in $(MODULES); do \
+		echo "=== fmt $$mod ==="; \
+		gofmt -w $$mod; \
+	done
+
+# Проверка форматирования
+check-fmt:
+	@for mod in $(MODULES); do \
+		unformatted=$$(gofmt -l $$mod); \
+		if [ -n "$$unformatted" ]; then \
+			echo "Files need formatting in $$mod:"; \
+			echo "$$unformatted"; \
+			exit 1; \
+		fi; \
+	done
+
 # Стандартный линтер
 lint:
-	golangci-lint run ./...
+	@for mod in $(MODULES); do \
+		echo "=== lint $$mod ==="; \
+		cd $$mod && golangci-lint run ./... && cd .. || exit 1; \
+	done
 
 # Go vet
 vet:
-	go vet ./...
+	@for mod in $(MODULES); do \
+		echo "=== vet $$mod ==="; \
+		go vet -C $$mod ./... || exit 1; \
+	done
 
 # Кастомный статический анализатор
 staticlint:
-	go run ./cmd/staticlint/ ./...
+	go run ./tools/staticlint/cmd/staticlint ./server/... ./client-cli/... ./gen/... ./pkg/...
 
 # Все проверки
 check: vet lint staticlint test
@@ -151,8 +200,8 @@ docker-rebuild:
 # Очистка артефактов
 clean:
 	rm -rf bin/
-	rm -f coverage.out coverage.html
-	rm -rf gen/go/
+	rm -f coverage_*.out coverage.html
+	rm -rf gen/auth gen/vault
 
 # Полная очистка
 clean-all: clean down-clean

@@ -14,196 +14,231 @@ import (
 	"credentials-vault/internal/service/user/mocks"
 )
 
-func setupTest(t *testing.T) (*UserService, *mocks.MockUserRepository) {
-	t.Helper()
-
-	ctrl := gomock.NewController(t)
-	t.Cleanup(ctrl.Finish)
-
-	mockRepo := mocks.NewMockUserRepository(ctrl)
-	service := NewService(mockRepo)
-
-	return service, mockRepo
-}
-
-func TestRegister_Success(t *testing.T) {
-	service, mockRepo := setupTest(t)
-
-	mockRepo.EXPECT().
-		FindByUsername(gomock.Any(), "testuser").
-		Return(nil, domain.ErrUserNotFound)
-
-	mockRepo.EXPECT().
-		Create(gomock.Any(), gomock.Any()).
-		DoAndReturn(func(ctx context.Context, user *domain.User) error {
-			user.ID = uuid.New()
-			return nil
-		})
-
-	user, err := service.Register(context.Background(), "testuser", "password123")
-
-	assert.NoError(t, err)
-	assert.NotNil(t, user)
-	assert.NotEmpty(t, user.ID)
-	assert.Equal(t, "testuser", user.Username)
-}
-
-func TestRegister_DuplicateUser(t *testing.T) {
-	service, mockRepo := setupTest(t)
-
-	existingUser := &domain.User{ID: uuid.New(), Username: "testuser"}
-	mockRepo.EXPECT().
-		FindByUsername(gomock.Any(), "testuser").
-		Return(existingUser, nil)
-
-	_, err := service.Register(context.Background(), "testuser", "password123")
-
-	assert.Error(t, err)
-	assert.ErrorIs(t, err, domain.ErrUserAlreadyExists)
-}
-
-func TestRegister_Validation(t *testing.T) {
-	service, _ := setupTest(t)
+func TestRegister(t *testing.T) {
+	userID := uuid.New()
 
 	tests := []struct {
-		name     string
-		username string
-		password string
-		wantErr  error
+		name      string
+		username  string
+		password  string
+		setupMock func(*mocks.MockUserRepository)
+		wantErr   error
+		wantUser  bool
 	}{
+		{
+			name:     "success",
+			username: "testuser",
+			password: "password123",
+			setupMock: func(mockRepo *mocks.MockUserRepository) {
+				mockRepo.EXPECT().
+					FindByUsername(gomock.Any(), "testuser").
+					Return(nil, domain.ErrUserNotFound)
+
+				mockRepo.EXPECT().
+					Create(gomock.Any(), gomock.Any()).
+					DoAndReturn(func(ctx context.Context, user *domain.User) error {
+						user.ID = userID
+						return nil
+					})
+			},
+			wantErr:  nil,
+			wantUser: true,
+		},
+		{
+			name:     "duplicate user",
+			username: "testuser",
+			password: "password123",
+			setupMock: func(mockRepo *mocks.MockUserRepository) {
+				mockRepo.EXPECT().
+					FindByUsername(gomock.Any(), "testuser").
+					Return(&domain.User{ID: userID, Username: "testuser"}, nil)
+			},
+			wantErr:  domain.ErrUserAlreadyExists,
+			wantUser: false,
+		},
 		{
 			name:     "empty username",
 			username: "",
 			password: "password123",
+			setupMock: func(mockRepo *mocks.MockUserRepository) {
+			},
 			wantErr:  domain.ErrUsernameRequired,
+			wantUser: false,
 		},
 		{
 			name:     "short username",
 			username: "ab",
 			password: "password123",
+			setupMock: func(mockRepo *mocks.MockUserRepository) {
+			},
 			wantErr:  domain.ErrUsernameTooShort,
+			wantUser: false,
 		},
 		{
 			name:     "long username",
 			username: strings.Repeat("a", 65),
 			password: "password123",
+			setupMock: func(mockRepo *mocks.MockUserRepository) {
+			},
 			wantErr:  domain.ErrUsernameTooLong,
+			wantUser: false,
 		},
 		{
 			name:     "empty password",
 			username: "testuser",
 			password: "",
+			setupMock: func(mockRepo *mocks.MockUserRepository) {
+			},
 			wantErr:  domain.ErrPasswordRequired,
+			wantUser: false,
 		},
 		{
 			name:     "short password",
 			username: "testuser",
 			password: "123",
+			setupMock: func(mockRepo *mocks.MockUserRepository) {
+			},
 			wantErr:  domain.ErrPasswordTooShort,
+			wantUser: false,
 		},
 		{
 			name:     "long password",
 			username: "testuser",
 			password: strings.Repeat("p", 73),
+			setupMock: func(mockRepo *mocks.MockUserRepository) {
+			},
 			wantErr:  domain.ErrPasswordTooLong,
+			wantUser: false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := service.Register(context.Background(), tt.username, tt.password)
+			ctrl := gomock.NewController(t)
+			t.Cleanup(ctrl.Finish)
 
-			assert.Error(t, err)
-			assert.ErrorIs(t, err, tt.wantErr)
+			mockRepo := mocks.NewMockUserRepository(ctrl)
+			service := NewService(mockRepo)
+
+			tt.setupMock(mockRepo)
+
+			user, err := service.Register(context.Background(), tt.username, tt.password)
+
+			if tt.wantErr != nil {
+				assert.Error(t, err)
+				assert.ErrorIs(t, err, tt.wantErr)
+				assert.Nil(t, user)
+			} else {
+				assert.NoError(t, err)
+				if tt.wantUser {
+					assert.NotNil(t, user)
+					assert.NotEmpty(t, user.ID)
+					assert.Equal(t, tt.username, user.Username)
+				}
+			}
 		})
 	}
 }
 
-func TestLogin_Success(t *testing.T) {
-	service, mockRepo := setupTest(t)
-
+func TestLogin(t *testing.T) {
 	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte("password123"), bcrypt.DefaultCost)
-
-	user := &domain.User{
-		ID:       uuid.New(),
-		Username: "testuser",
-		Password: string(hashedPassword),
-	}
-
-	mockRepo.EXPECT().
-		FindByUsername(gomock.Any(), "testuser").
-		Return(user, nil)
-
-	loginUser, err := service.Login(context.Background(), "testuser", "password123")
-
-	assert.NoError(t, err)
-	assert.NotNil(t, loginUser)
-	assert.Equal(t, "testuser", loginUser.Username)
-}
-
-func TestLogin_WrongPassword(t *testing.T) {
-	service, mockRepo := setupTest(t)
-
-	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte("password123"), bcrypt.DefaultCost)
-
-	user := &domain.User{
-		ID:       uuid.New(),
-		Username: "testuser",
-		Password: string(hashedPassword),
-	}
-
-	mockRepo.EXPECT().
-		FindByUsername(gomock.Any(), "testuser").
-		Return(user, nil)
-
-	_, err := service.Login(context.Background(), "testuser", "wrong-password")
-
-	assert.Error(t, err)
-	assert.ErrorIs(t, err, domain.ErrInvalidCredentials)
-}
-
-func TestLogin_UserNotFound(t *testing.T) {
-	service, mockRepo := setupTest(t)
-
-	mockRepo.EXPECT().
-		FindByUsername(gomock.Any(), "unknown").
-		Return(nil, domain.ErrUserNotFound)
-
-	_, err := service.Login(context.Background(), "unknown", "password123")
-
-	assert.Error(t, err)
-	assert.ErrorIs(t, err, domain.ErrInvalidCredentials)
-}
-
-func TestLogin_Validation(t *testing.T) {
-	service, _ := setupTest(t)
+	userID := uuid.New()
 
 	tests := []struct {
-		name     string
-		username string
-		password string
-		wantErr  error
+		name      string
+		username  string
+		password  string
+		setupMock func(*mocks.MockUserRepository)
+		wantErr   error
+		wantUser  bool
 	}{
+		{
+			name:     "success",
+			username: "testuser",
+			password: "password123",
+			setupMock: func(mockRepo *mocks.MockUserRepository) {
+				mockRepo.EXPECT().
+					FindByUsername(gomock.Any(), "testuser").
+					Return(&domain.User{
+						ID:       userID,
+						Username: "testuser",
+						Password: string(hashedPassword),
+					}, nil)
+			},
+			wantErr:  nil,
+			wantUser: true,
+		},
+		{
+			name:     "wrong password",
+			username: "testuser",
+			password: "wrong-password",
+			setupMock: func(mockRepo *mocks.MockUserRepository) {
+				mockRepo.EXPECT().
+					FindByUsername(gomock.Any(), "testuser").
+					Return(&domain.User{
+						ID:       userID,
+						Username: "testuser",
+						Password: string(hashedPassword),
+					}, nil)
+			},
+			wantErr:  domain.ErrInvalidCredentials,
+			wantUser: false,
+		},
+		{
+			name:     "user not found",
+			username: "unknown",
+			password: "password123",
+			setupMock: func(mockRepo *mocks.MockUserRepository) {
+				mockRepo.EXPECT().
+					FindByUsername(gomock.Any(), "unknown").
+					Return(nil, domain.ErrUserNotFound)
+			},
+			wantErr:  domain.ErrInvalidCredentials,
+			wantUser: false,
+		},
 		{
 			name:     "empty username",
 			username: "",
 			password: "password123",
+			setupMock: func(mockRepo *mocks.MockUserRepository) {
+			},
 			wantErr:  domain.ErrUsernameRequired,
+			wantUser: false,
 		},
 		{
 			name:     "empty password",
 			username: "testuser",
 			password: "",
+			setupMock: func(mockRepo *mocks.MockUserRepository) {
+			},
 			wantErr:  domain.ErrPasswordRequired,
+			wantUser: false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := service.Login(context.Background(), tt.username, tt.password)
+			ctrl := gomock.NewController(t)
+			t.Cleanup(ctrl.Finish)
 
-			assert.Error(t, err)
-			assert.ErrorIs(t, err, tt.wantErr)
+			mockRepo := mocks.NewMockUserRepository(ctrl)
+			service := NewService(mockRepo)
+
+			tt.setupMock(mockRepo)
+
+			user, err := service.Login(context.Background(), tt.username, tt.password)
+
+			if tt.wantErr != nil {
+				assert.Error(t, err)
+				assert.ErrorIs(t, err, tt.wantErr)
+				assert.Nil(t, user)
+			} else {
+				assert.NoError(t, err)
+				if tt.wantUser {
+					assert.NotNil(t, user)
+					assert.Equal(t, tt.username, user.Username)
+				}
+			}
 		})
 	}
 }

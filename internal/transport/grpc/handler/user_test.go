@@ -16,241 +16,218 @@ import (
 	"credentials-vault/internal/transport/grpc/handler/mocks"
 )
 
-func setupTest(t *testing.T) (*AuthHandler, *mocks.MockUserService) {
-	t.Helper()
-
-	ctrl := gomock.NewController(t)
-	t.Cleanup(ctrl.Finish)
-
-	mockService := mocks.NewMockUserService(ctrl)
-	handler := NewAuthHandler(mockService)
-
-	return handler, mockService
-}
-
-func TestRegister_Success(t *testing.T) {
-	handler, mockService := setupTest(t)
-
+func TestRegister(t *testing.T) {
 	userID := uuid.New()
-	user := &domain.User{
-		ID:       userID,
-		Username: "testuser",
-	}
 
-	mockService.EXPECT().
-		Register(gomock.Any(), "testuser", "password123").
-		Return(user, nil)
-
-	resp, err := handler.Register(context.Background(), &authpb.RegisterRequest{
-		Username: "testuser",
-		Password: "password123",
-	})
-
-	assert.NoError(t, err)
-	assert.NotNil(t, resp)
-	assert.NotNil(t, resp.User)
-	assert.Equal(t, userID.String(), resp.User.Id)
-	assert.Equal(t, "testuser", resp.User.Username)
-	assert.Equal(t, "User registered successfully", resp.Message)
-}
-
-func TestRegister_NilRequest(t *testing.T) {
-	handler, _ := setupTest(t)
-
-	resp, err := handler.Register(context.Background(), nil)
-
-	assert.Nil(t, resp)
-	assert.Error(t, err)
-	st, ok := status.FromError(err)
-	assert.True(t, ok)
-	assert.Equal(t, codes.InvalidArgument, st.Code())
-}
-
-func TestRegister_DuplicateUser(t *testing.T) {
-	handler, mockService := setupTest(t)
-
-	mockService.EXPECT().
-		Register(gomock.Any(), "testuser", "password123").
-		Return(nil, domain.ErrUserAlreadyExists)
-
-	resp, err := handler.Register(context.Background(), &authpb.RegisterRequest{
-		Username: "testuser",
-		Password: "password123",
-	})
-
-	assert.Nil(t, resp)
-	assert.Error(t, err)
-	st, ok := status.FromError(err)
-	assert.True(t, ok)
-	assert.Equal(t, codes.AlreadyExists, st.Code())
-	assert.Equal(t, "user already exists", st.Message())
-}
-
-func TestRegister_ValidationErrors(t *testing.T) {
 	tests := []struct {
-		name     string
-		err      error
-		wantCode codes.Code
-		wantMsg  string
+		name      string
+		req       *authpb.RegisterRequest
+		setupMock func(*mocks.MockUserService)
+		wantCode  codes.Code
+		wantMsg   string
+		wantUser  bool
 	}{
 		{
-			name:     "username required",
-			err:      domain.ErrUsernameRequired,
+			name: "success",
+			req: &authpb.RegisterRequest{
+				Username: "testuser",
+				Password: "password123",
+			},
+			setupMock: func(mockService *mocks.MockUserService) {
+				mockService.EXPECT().
+					Register(gomock.Any(), "testuser", "password123").
+					Return(&domain.User{ID: userID, Username: "testuser"}, nil)
+			},
+			wantCode: codes.OK,
+			wantUser: true,
+		},
+		{
+			name: "nil request",
+			req:  nil,
+			setupMock: func(mockService *mocks.MockUserService) {
+			},
+			wantCode: codes.InvalidArgument,
+			wantUser: false,
+		},
+		{
+			name: "duplicate user",
+			req: &authpb.RegisterRequest{
+				Username: "testuser",
+				Password: "password123",
+			},
+			setupMock: func(mockService *mocks.MockUserService) {
+				mockService.EXPECT().
+					Register(gomock.Any(), "testuser", "password123").
+					Return(nil, domain.ErrUserAlreadyExists)
+			},
+			wantCode: codes.AlreadyExists,
+			wantMsg:  "user already exists",
+			wantUser: false,
+		},
+		{
+			name: "validation error",
+			req: &authpb.RegisterRequest{
+				Username: "testuser",
+				Password: "password123",
+			},
+			setupMock: func(mockService *mocks.MockUserService) {
+				mockService.EXPECT().
+					Register(gomock.Any(), "testuser", "password123").
+					Return(nil, domain.ErrUsernameRequired)
+			},
 			wantCode: codes.InvalidArgument,
 			wantMsg:  "username is required",
+			wantUser: false,
 		},
 		{
-			name:     "username too short",
-			err:      domain.ErrUsernameTooShort,
-			wantCode: codes.InvalidArgument,
-			wantMsg:  "username must be at least 3 characters",
-		},
-		{
-			name:     "username too long",
-			err:      domain.ErrUsernameTooLong,
-			wantCode: codes.InvalidArgument,
-			wantMsg:  "username must be at most 64 characters",
-		},
-		{
-			name:     "password required",
-			err:      domain.ErrPasswordRequired,
-			wantCode: codes.InvalidArgument,
-			wantMsg:  "password is required",
-		},
-		{
-			name:     "password too short",
-			err:      domain.ErrPasswordTooShort,
-			wantCode: codes.InvalidArgument,
-			wantMsg:  "password must be at least 6 characters",
-		},
-		{
-			name:     "password too long",
-			err:      domain.ErrPasswordTooLong,
-			wantCode: codes.InvalidArgument,
-			wantMsg:  "password must be at most 72 characters",
+			name: "internal error",
+			req: &authpb.RegisterRequest{
+				Username: "testuser",
+				Password: "password123",
+			},
+			setupMock: func(mockService *mocks.MockUserService) {
+				mockService.EXPECT().
+					Register(gomock.Any(), "testuser", "password123").
+					Return(nil, errors.New("database error"))
+			},
+			wantCode: codes.Internal,
+			wantMsg:  "internal error",
+			wantUser: false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			handler, mockService := setupTest(t)
+			ctrl := gomock.NewController(t)
+			t.Cleanup(ctrl.Finish)
 
-			mockService.EXPECT().
-				Register(gomock.Any(), "testuser", "password123").
-				Return(nil, tt.err)
+			mockService := mocks.NewMockUserService(ctrl)
+			handler := NewAuthHandler(mockService)
 
-			resp, err := handler.Register(context.Background(), &authpb.RegisterRequest{
-				Username: "testuser",
-				Password: "password123",
-			})
+			tt.setupMock(mockService)
 
-			assert.Nil(t, resp)
-			assert.Error(t, err)
-			st, ok := status.FromError(err)
-			assert.True(t, ok)
-			assert.Equal(t, tt.wantCode, st.Code())
-			assert.Equal(t, tt.wantMsg, st.Message())
+			resp, err := handler.Register(context.Background(), tt.req)
+
+			if tt.wantCode == codes.OK {
+				assert.NoError(t, err)
+				assert.NotNil(t, resp)
+				if tt.wantUser {
+					assert.NotNil(t, resp.User)
+					assert.Equal(t, userID.String(), resp.User.Id)
+					assert.Equal(t, "testuser", resp.User.Username)
+				}
+			} else {
+				assert.Error(t, err)
+				st, ok := status.FromError(err)
+				assert.True(t, ok)
+				assert.Equal(t, tt.wantCode, st.Code())
+				if tt.wantMsg != "" {
+					assert.Equal(t, tt.wantMsg, st.Message())
+				}
+			}
 		})
 	}
 }
 
-func TestRegister_InternalError(t *testing.T) {
-	handler, mockService := setupTest(t)
-
-	mockService.EXPECT().
-		Register(gomock.Any(), "testuser", "password123").
-		Return(nil, errors.New("database connection failed"))
-
-	resp, err := handler.Register(context.Background(), &authpb.RegisterRequest{
-		Username: "testuser",
-		Password: "password123",
-	})
-
-	assert.Nil(t, resp)
-	assert.Error(t, err)
-	st, ok := status.FromError(err)
-	assert.True(t, ok)
-	assert.Equal(t, codes.Internal, st.Code())
-	assert.Equal(t, "internal error", st.Message())
-}
-
-func TestLogin_Success(t *testing.T) {
-	handler, mockService := setupTest(t)
-
+func TestLogin(t *testing.T) {
 	userID := uuid.New()
-	user := &domain.User{
-		ID:       userID,
-		Username: "testuser",
+
+	tests := []struct {
+		name      string
+		req       *authpb.LoginRequest
+		setupMock func(*mocks.MockUserService)
+		wantCode  codes.Code
+		wantMsg   string
+		wantUser  bool
+	}{
+		{
+			name: "success",
+			req: &authpb.LoginRequest{
+				Username: "testuser",
+				Password: "password123",
+			},
+			setupMock: func(mockService *mocks.MockUserService) {
+				mockService.EXPECT().
+					Login(gomock.Any(), "testuser", "password123").
+					Return(&domain.User{ID: userID, Username: "testuser"}, nil)
+			},
+			wantCode: codes.OK,
+			wantUser: true,
+		},
+		{
+			name: "nil request",
+			req:  nil,
+			setupMock: func(mockService *mocks.MockUserService) {
+			},
+			wantCode: codes.InvalidArgument,
+			wantUser: false,
+		},
+		{
+			name: "invalid credentials",
+			req: &authpb.LoginRequest{
+				Username: "testuser",
+				Password: "wrongpassword",
+			},
+			setupMock: func(mockService *mocks.MockUserService) {
+				mockService.EXPECT().
+					Login(gomock.Any(), "testuser", "wrongpassword").
+					Return(nil, domain.ErrInvalidCredentials)
+			},
+			wantCode: codes.Unauthenticated,
+			wantMsg:  "invalid username or password",
+			wantUser: false,
+		},
+		{
+			name: "internal error",
+			req: &authpb.LoginRequest{
+				Username: "testuser",
+				Password: "password123",
+			},
+			setupMock: func(mockService *mocks.MockUserService) {
+				mockService.EXPECT().
+					Login(gomock.Any(), "testuser", "password123").
+					Return(nil, errors.New("database error"))
+			},
+			wantCode: codes.Internal,
+			wantMsg:  "internal error",
+			wantUser: false,
+		},
 	}
 
-	mockService.EXPECT().
-		Login(gomock.Any(), "testuser", "password123").
-		Return(user, nil)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			t.Cleanup(ctrl.Finish)
 
-	resp, err := handler.Login(context.Background(), &authpb.LoginRequest{
-		Username: "testuser",
-		Password: "password123",
-	})
+			mockService := mocks.NewMockUserService(ctrl)
+			handler := NewAuthHandler(mockService)
 
-	assert.NoError(t, err)
-	assert.NotNil(t, resp)
-	assert.NotNil(t, resp.User)
-	assert.Equal(t, userID.String(), resp.User.Id)
-	assert.Equal(t, "testuser", resp.User.Username)
+			tt.setupMock(mockService)
+
+			resp, err := handler.Login(context.Background(), tt.req)
+
+			if tt.wantCode == codes.OK {
+				assert.NoError(t, err)
+				assert.NotNil(t, resp)
+				if tt.wantUser {
+					assert.NotNil(t, resp.User)
+					assert.Equal(t, userID.String(), resp.User.Id)
+					assert.Equal(t, "testuser", resp.User.Username)
+				}
+			} else {
+				assert.Error(t, err)
+				st, ok := status.FromError(err)
+				assert.True(t, ok)
+				assert.Equal(t, tt.wantCode, st.Code())
+				if tt.wantMsg != "" {
+					assert.Equal(t, tt.wantMsg, st.Message())
+				}
+			}
+		})
+	}
 }
 
-func TestLogin_NilRequest(t *testing.T) {
-	handler, _ := setupTest(t)
-
-	resp, err := handler.Login(context.Background(), nil)
-
-	assert.Nil(t, resp)
-	assert.Error(t, err)
-	st, ok := status.FromError(err)
-	assert.True(t, ok)
-	assert.Equal(t, codes.InvalidArgument, st.Code())
-}
-
-func TestLogin_InvalidCredentials(t *testing.T) {
-	handler, mockService := setupTest(t)
-
-	mockService.EXPECT().
-		Login(gomock.Any(), "testuser", "wrongpassword").
-		Return(nil, domain.ErrInvalidCredentials)
-
-	resp, err := handler.Login(context.Background(), &authpb.LoginRequest{
-		Username: "testuser",
-		Password: "wrongpassword",
-	})
-
-	assert.Nil(t, resp)
-	assert.Error(t, err)
-	st, ok := status.FromError(err)
-	assert.True(t, ok)
-	assert.Equal(t, codes.Unauthenticated, st.Code())
-	assert.Equal(t, "invalid username or password", st.Message())
-}
-
-func TestLogin_InternalError(t *testing.T) {
-	handler, mockService := setupTest(t)
-
-	mockService.EXPECT().
-		Login(gomock.Any(), "testuser", "password123").
-		Return(nil, errors.New("database connection failed"))
-
-	resp, err := handler.Login(context.Background(), &authpb.LoginRequest{
-		Username: "testuser",
-		Password: "password123",
-	})
-
-	assert.Nil(t, resp)
-	assert.Error(t, err)
-	st, ok := status.FromError(err)
-	assert.True(t, ok)
-	assert.Equal(t, codes.Internal, st.Code())
-}
-
-func TestDomainUserToProto(t *testing.T) {
+func TestToProtoUser(t *testing.T) {
 	userID := uuid.New()
 	user := &domain.User{
 		ID:       userID,

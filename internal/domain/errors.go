@@ -16,5 +16,8 @@ var (
 )
 
 var (
-	ErrVaultItemNotFound = errors.New("vault item not found")
+	ErrVaultItemNotFound     = errors.New("vault item not found")
+	ErrInvalidItemType       = errors.New("invalid item type")
+	ErrEncryptedDataRequired = errors.New("encrypted data is required")
+	ErrUserIDRequired        = errors.New("user id is required")
 )

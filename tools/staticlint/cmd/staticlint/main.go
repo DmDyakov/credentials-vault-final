@@ -23,9 +23,7 @@
 //   - tenv (github.com/sivchari/tenv) - проверка использования
 //     os.Setenv в тестах, требует замены на t.Setenv
 //
-// 5. Кастомный анализатор:
-//   - noosexit - запрещает прямой вызов os.Exit в функции main пакета main.
-//     Игнорирует сгенерированные файлы и кэш сборки Go.
+// 5. Кастомные анализаторы
 //
 // Механизм запуска multichecker:
 //
@@ -85,6 +83,8 @@ import (
 func main() {
 	analyzers := []*analysis.Analyzer{
 		noOsExitAnalyzer,
+		noFatalAnalyzer,
+		noZapFatalAnalyzer,
 
 		asmdecl.Analyzer,
 		assign.Analyzer,

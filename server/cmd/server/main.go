@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
 	"os"
 	"os/signal"
 	"syscall"
@@ -13,11 +12,9 @@ import (
 	"credentials-vault/server/internal/app"
 	"credentials-vault/server/internal/config"
 	"credentials-vault/server/internal/logger"
-
-	"go.uber.org/zap"
 )
 
-func main() {
+func run() error {
 	buildinfo.Print()
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT)
@@ -25,25 +22,34 @@ func main() {
 
 	cfg, err := config.Load()
 	if err != nil {
-		log.Fatalf("failed to load config: %v", err)
+		return fmt.Errorf("failed to load config: %w", err)
 	}
 
 	logger, err := logger.New(cfg)
 	if err != nil {
-		log.Fatalf("failed to create logger: %v", err)
+		return fmt.Errorf("failed to create logger: %w", err)
 	}
 	defer func() {
-		if err := logger.Sync(); err != nil {
-			fmt.Fprintf(os.Stderr, "failed to sync logger: %v\n", err)
+		if syncErr := logger.Sync(); syncErr != nil {
+			fmt.Fprintf(os.Stderr, "failed to sync logger: %v\n", syncErr)
 		}
 	}()
 
 	app, err := app.New(cfg, logger)
 	if err != nil {
-		logger.Fatal("failed to create app: %v", zap.Error(err))
+		return fmt.Errorf("failed to create app: %w", err)
 	}
 
 	if err := lifecycle.Run(ctx, app, cfg.ShutdownTimeout); err != nil {
-		logger.Fatal("app terminated with error", zap.Error(err))
+		return fmt.Errorf("app terminated with error: %w", err)
+	}
+
+	return nil
+}
+
+func main() {
+	if err := run(); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
 	}
 }

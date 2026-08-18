@@ -7,31 +7,14 @@ import (
 	"golang.org/x/tools/go/analysis"
 )
 
-// noOsExitAnalyzer запрещает прямой вызов os.Exit в функции main пакета main.
-//
-// Анализатор проверяет:
-// - Что пакет называется main (точка входа программы)
-// - Что функция называется main и не имеет ресивера
-// - Что в теле функции нет вызова os.Exit
-//
-// Использование os.Exit в main-функции main-пакета считается плохой практикой,
-// так как:
-// - defer-функции не выполняются
-// - Сложно тестировать
-// - Нарушает принцип единственной точки выхода
-//
-// Рекомендуется возвращать ошибку из main и обрабатывать её на верхнем уровне.
+// noOsExitAnalyzer запрещает os.Exit вне функции main пакета main.
 var noOsExitAnalyzer = &analysis.Analyzer{
 	Name: "noosexit",
-	Doc:  "запрещает прямой вызов os.Exit в функции main пакета main",
-	Run:  run,
+	Doc:  "запрещает os.Exit вне функции main пакета main",
+	Run:  runNoOsExit,
 }
 
-func run(pass *analysis.Pass) (interface{}, error) {
-	if pass.Pkg.Name() != "main" {
-		return nil, nil
-	}
-
+func runNoOsExit(pass *analysis.Pass) (interface{}, error) {
 	for _, file := range pass.Files {
 		filename := pass.Fset.Position(file.Pos()).Filename
 		if strings.Contains(filename, "go-build") {
@@ -40,9 +23,11 @@ func run(pass *analysis.Pass) (interface{}, error) {
 
 		ast.Inspect(file, func(node ast.Node) bool {
 			fn, ok := node.(*ast.FuncDecl)
-			if !ok || fn.Name.Name != "main" || fn.Recv != nil {
+			if !ok {
 				return true
 			}
+
+			isMainFunc := fn.Name.Name == "main" && fn.Recv == nil && pass.Pkg.Name() == "main"
 
 			ast.Inspect(fn.Body, func(n ast.Node) bool {
 				call, ok := n.(*ast.CallExpr)
@@ -56,9 +41,14 @@ func run(pass *analysis.Pass) (interface{}, error) {
 				}
 
 				pkg, ok := sel.X.(*ast.Ident)
-				if ok && pkg.Name == "os" && sel.Sel.Name == "Exit" {
-					pass.Reportf(call.Pos(), "прямой вызов os.Exit запрещён в main")
+				if !ok || pkg.Name != "os" || sel.Sel.Name != "Exit" {
+					return true
 				}
+
+				if !isMainFunc {
+					pass.Reportf(call.Pos(), "os.Exit разрешён только в main функции пакета main")
+				}
+
 				return true
 			})
 			return true

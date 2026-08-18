@@ -30,6 +30,28 @@ func (c *Client) AddLogin(ctx context.Context, site, username, password string) 
 	return nil
 }
 
+// ListItems возвращает список элементов.
+func (c *Client) ListItems(ctx context.Context) ([]*vaultpb.VaultItem, error) {
+	resp, err := c.vault.ListItems(c.withToken(ctx), &vaultpb.ListItemsRequest{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to list items: %w", err)
+	}
+
+	return resp.Items, nil
+}
+
+// GetItem возвращает элемент по ID.
+func (c *Client) GetItem(ctx context.Context, id string) (*vaultpb.VaultItem, error) {
+	resp, err := c.vault.GetItem(c.withToken(ctx), &vaultpb.GetItemRequest{
+		Id: id,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get item: %w", err)
+	}
+
+	return resp.Item, nil
+}
+
 // withToken добавляет токен в контекст.
 func (c *Client) withToken(ctx context.Context) context.Context {
 	if c.config.Token == "" {

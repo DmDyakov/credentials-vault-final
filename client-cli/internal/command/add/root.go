@@ -11,7 +11,7 @@ import (
 func NewAddCmd(cl *client.Client) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "add",
-		Short: "Добавление данных в хранилище",
+		Short: "Добавление данных",
 	}
 
 	cmd.AddCommand(

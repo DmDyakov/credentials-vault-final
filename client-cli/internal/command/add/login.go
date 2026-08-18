@@ -9,7 +9,7 @@ import (
 	"credentials-vault/client-cli/internal/client"
 )
 
-// newLoginCmd создаёт команду add login.
+// newAddLoginCmd создаёт команду add login.
 func newLoginCmd(cl *client.Client) *cobra.Command {
 	var site, username, password string
 

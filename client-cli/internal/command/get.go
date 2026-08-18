@@ -1,0 +1,37 @@
+package command
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/spf13/cobra"
+
+	"credentials-vault/client-cli/internal/client"
+)
+
+// newGetCmd создаёт команду get.
+func newGetCmd(cl *client.Client) *cobra.Command {
+	return &cobra.Command{
+		Use:   "get [id]",
+		Short: "Получить элемент по ID",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			item, err := cl.GetItem(context.Background(), args[0])
+			if err != nil {
+				return err
+			}
+
+			fmt.Printf("ID: %s\n", item.Id)
+			fmt.Printf("Type: %s\n", item.Type.String())
+			fmt.Printf("Data: %s\n", string(item.EncryptedData))
+			fmt.Printf("Metadata:\n")
+			for k, v := range item.Metadata {
+				fmt.Printf("  %s: %s\n", k, v)
+			}
+			fmt.Printf("Created: %s\n", item.CreatedAt.AsTime().Format("2006-01-02 15:04:05"))
+			fmt.Printf("Updated: %s\n", item.UpdatedAt.AsTime().Format("2006-01-02 15:04:05"))
+
+			return nil
+		},
+	}
+}

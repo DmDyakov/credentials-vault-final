@@ -7,6 +7,7 @@ import (
 	"credentials-vault/client-cli/internal/client"
 	"credentials-vault/client-cli/internal/command/add"
 	"credentials-vault/client-cli/internal/command/auth"
+	"credentials-vault/client-cli/internal/command/info"
 )
 
 // NewRootCmd создаёт корневую команду.
@@ -25,6 +26,8 @@ func NewRootCmd(cl *client.Client) *cobra.Command {
 
 		newListCmd(cl),
 		newGetCmd(cl),
+
+		info.NewVersionCmd(),
 	)
 
 	return cmd

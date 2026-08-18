@@ -5,10 +5,12 @@ import (
 	"github.com/spf13/cobra"
 
 	"credentials-vault/client-cli/internal/client"
+	"credentials-vault/client-cli/internal/command/add"
+	"credentials-vault/client-cli/internal/command/auth"
 )
 
 // NewRootCmd создаёт корневую команду.
-func NewRootCmd(cl *client.Client) *cobra.Command {
+func NewRootCmd(client *client.Client) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "vault",
 		Short: "Credentials Vault CLI",
@@ -16,8 +18,9 @@ func NewRootCmd(cl *client.Client) *cobra.Command {
 	}
 
 	cmd.AddCommand(
-		newRegisterCmd(cl),
-		newLoginCmd(cl),
+		auth.NewRegisterCmd(client),
+		auth.NewLoginCmd(client),
+		add.NewAddCmd(client),
 	)
 
 	return cmd

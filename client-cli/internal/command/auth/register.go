@@ -1,4 +1,5 @@
-package command
+// Package auth содержит команды аутентификации.
+package auth
 
 import (
 	"context"
@@ -8,8 +9,8 @@ import (
 	"credentials-vault/client-cli/internal/client"
 )
 
-// newRegisterCmd создаёт команду register.
-func newRegisterCmd(cl *client.Client) *cobra.Command {
+// NewRegisterCmd создаёт команду register.
+func NewRegisterCmd(cl *client.Client) *cobra.Command {
 	var username, password string
 
 	cmd := &cobra.Command{

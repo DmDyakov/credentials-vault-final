@@ -6,25 +6,70 @@
 ## Быстрый старт
 
 ```bash
-make prod          # запуск в Docker
-make dev           # локальная разработка
-make build-all     # сборка всех бинарников
+# Запуск сервера
+docker compose up -d
+
+# Сборка CLI
+make build-cli
+
+# Регистрация
+./bin/vault register --username=user --password=pass
+
+# Вход
+./bin/vault login --username=user --password=pass
+
+# Добавление логина
+./bin/vault add login --site=example.com --username=user --password=pass
+
+# Список элементов
+./bin/vault list
+
+# Получение элемента
+./bin/vault get <id>
 ```
 
-## Тестирование
+> **Примечание:** На Windows используйте `vault.exe` вместо `vault`.
+
+## Команды CLI
 
 ```bash
-make check         # все проверки
-make test          # тесты
-make test-coverage # покрытие
+vault register              # Регистрация нового пользователя
+vault login                 # Вход в систему
+vault add login             # Добавить логин/пароль
+vault list                  # Список элементов
+vault get <id>              # Получить элемент по ID
+vault version               # Версия и дата сборки
 ```
 
-## API
+## Кроссплатформенная сборка
 
-gRPC сервисы описаны в `api/proto/`:
+```bash
+# Linux (amd64)
+make build-linux
 
-- `auth/v1/auth.proto` — регистрация и вход
-- `vault/v1/vault.proto` — хранение данных
+# macOS (arm64)
+make build-darwin
+
+# Windows (amd64)
+make build-windows
+
+# Все платформы
+make build-all-platforms
+```
+
+Бинарники будут в `bin/`:
+
+## Разработка
+
+```bash
+make dev          # Запуск в dev-режиме
+make test         # Тесты всех модулей
+make test-coverage # Покрытие кода
+make check        # Все проверки (fmt, vet, lint, staticlint, test)
+make build        # Сборка сервера
+make build-cli    # Сборка CLI
+make build-all    # Сборка всех бинарников
+```
 
 ## Структура
 
@@ -32,6 +77,23 @@ gRPC сервисы описаны в `api/proto/`:
 
 - `server/` — gRPC сервер
 - `client-cli/` — CLI клиент
-- `gen/` — сгенерированный код
-- `pkg/` — общие пакеты
-- `tools/` — инструменты разработки
+- `gen/` — сгенерированный gRPC код
+- `pkg/` — общие пакеты (buildinfo, jwt, lifecycle)
+- `tools/` — инструменты разработки (staticlint)
+- `api/` — proto-файлы
+
+## API
+
+gRPC сервисы:
+
+- `AuthService` — регистрация и аутентификация
+- `VaultService` — хранение и управление данными
+
+## Технологии
+
+- Go 1.26
+- gRPC + Protobuf
+- PostgreSQL
+- JWT
+- Docker
+- Cobra

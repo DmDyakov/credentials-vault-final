@@ -5,12 +5,10 @@ import (
 	"context"
 
 	"github.com/spf13/cobra"
-
-	"credentials-vault/client-cli/internal/client"
 )
 
 // newAddLoginCmd создаёт команду add login.
-func newLoginCmd(cl *client.Client) *cobra.Command {
+func newLoginCmd(cl Client) *cobra.Command {
 	var site, username, password string
 
 	cmd := &cobra.Command{

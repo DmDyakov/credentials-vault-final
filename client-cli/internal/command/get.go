@@ -5,12 +5,10 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
-
-	"credentials-vault/client-cli/internal/client"
 )
 
 // newGetCmd создаёт команду get.
-func newGetCmd(cl *client.Client) *cobra.Command {
+func newGetCmd(cl Client) *cobra.Command {
 	return &cobra.Command{
 		Use:   "get [id]",
 		Short: "Получить элемент по ID",

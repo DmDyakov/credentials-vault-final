@@ -5,12 +5,10 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
-
-	"credentials-vault/client-cli/internal/client"
 )
 
 // newListCmd создаёт команду list.
-func newListCmd(cl *client.Client) *cobra.Command {
+func newListCmd(cl Client) *cobra.Command {
 	return &cobra.Command{
 		Use:   "list",
 		Short: "Список элементов",

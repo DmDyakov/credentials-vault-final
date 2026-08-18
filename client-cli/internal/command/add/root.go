@@ -2,13 +2,20 @@
 package add
 
 import (
-	"github.com/spf13/cobra"
+	"context"
 
-	"credentials-vault/client-cli/internal/client"
+	"github.com/spf13/cobra"
 )
 
+//go:generate mockgen -source=root.go -destination=mocks/cli_client_mock.go -package=mocks Client
+
+// Client - интерфейс клиента CLI.
+type Client interface {
+	AddLogin(ctx context.Context, site, username, password string) error
+}
+
 // NewAddCmd создаёт команду add.
-func NewAddCmd(cl *client.Client) *cobra.Command {
+func NewAddCmd(cl Client) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "add",
 		Short: "Добавление данных",

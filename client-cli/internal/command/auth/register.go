@@ -5,12 +5,18 @@ import (
 	"context"
 
 	"github.com/spf13/cobra"
-
-	"credentials-vault/client-cli/internal/client"
 )
 
+//go:generate mockgen -source=register.go -destination=mocks/client_mock.go -package=mocks Client
+
+// Client - интерфейс клиента аутентификации.
+type Client interface {
+	Register(ctx context.Context, username, password string) error
+	Login(ctx context.Context, username, password string) error
+}
+
 // NewRegisterCmd создаёт команду register.
-func NewRegisterCmd(cl *client.Client) *cobra.Command {
+func NewRegisterCmd(cl Client) *cobra.Command {
 	var username, password string
 
 	cmd := &cobra.Command{

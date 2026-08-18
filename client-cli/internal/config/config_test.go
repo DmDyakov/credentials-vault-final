@@ -1,0 +1,121 @@
+package config
+
+import (
+	"os"
+	"path/filepath"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
+
+func TestNew(t *testing.T) {
+	t.Run("default config when file not exists", func(t *testing.T) {
+		// Устанавливаем домашнюю директорию во временную
+		tmpHome := t.TempDir()
+		t.Setenv("USERPROFILE", tmpHome)
+		t.Setenv("HOME", tmpHome)
+
+		cfg, err := New()
+
+		assert.NoError(t, err)
+		assert.NotNil(t, cfg)
+		assert.Equal(t, defaultServerAddress, cfg.ServerAddress)
+		assert.Empty(t, cfg.Token)
+		assert.NotEmpty(t, cfg.path)
+	})
+
+	t.Run("load config from file", func(t *testing.T) {
+		tmpHome := t.TempDir()
+		t.Setenv("USERPROFILE", tmpHome)
+		t.Setenv("HOME", tmpHome)
+
+		// Создаём файл конфига
+		configDir := filepath.Join(tmpHome, ".credentials-vault")
+		err := os.MkdirAll(configDir, 0700)
+		assert.NoError(t, err)
+
+		configPath := filepath.Join(configDir, "config.json")
+		data := `{"server_address":"remote:9090","token":"test-token"}`
+		err = os.WriteFile(configPath, []byte(data), 0600)
+		assert.NoError(t, err)
+
+		cfg, err := New()
+
+		assert.NoError(t, err)
+		assert.Equal(t, "remote:9090", cfg.ServerAddress)
+		assert.Equal(t, "test-token", cfg.Token)
+	})
+
+	t.Run("invalid json", func(t *testing.T) {
+		tmpHome := t.TempDir()
+		t.Setenv("USERPROFILE", tmpHome)
+		t.Setenv("HOME", tmpHome)
+
+		configDir := filepath.Join(tmpHome, ".credentials-vault")
+		err := os.MkdirAll(configDir, 0700)
+		assert.NoError(t, err)
+
+		configPath := filepath.Join(configDir, "config.json")
+		err = os.WriteFile(configPath, []byte("invalid json"), 0600)
+		assert.NoError(t, err)
+
+		_, err = New()
+
+		assert.Error(t, err)
+	})
+}
+
+func TestSave(t *testing.T) {
+	t.Run("save creates file", func(t *testing.T) {
+		tmpHome := t.TempDir()
+		t.Setenv("USERPROFILE", tmpHome)
+		t.Setenv("HOME", tmpHome)
+
+		cfg, err := New()
+		assert.NoError(t, err)
+
+		cfg.ServerAddress = "remote:9090"
+		cfg.Token = "test-token"
+
+		err = cfg.Save()
+		assert.NoError(t, err)
+
+		_, err = os.Stat(cfg.path)
+		assert.NoError(t, err)
+
+		data, err := os.ReadFile(cfg.path)
+		assert.NoError(t, err)
+		assert.Contains(t, string(data), "remote:9090")
+		assert.Contains(t, string(data), "test-token")
+	})
+
+	t.Run("save without path", func(t *testing.T) {
+		cfg := &Config{
+			ServerAddress: "localhost:9090",
+		}
+
+		err := cfg.Save()
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "config path is not set")
+	})
+
+	t.Run("save and load roundtrip", func(t *testing.T) {
+		tmpHome := t.TempDir()
+		t.Setenv("USERPROFILE", tmpHome)
+		t.Setenv("HOME", tmpHome)
+
+		cfg, err := New()
+		assert.NoError(t, err)
+
+		cfg.ServerAddress = "remote:9090"
+		cfg.Token = "test-token"
+
+		err = cfg.Save()
+		assert.NoError(t, err)
+
+		loaded, err := New()
+		assert.NoError(t, err)
+		assert.Equal(t, "remote:9090", loaded.ServerAddress)
+		assert.Equal(t, "test-token", loaded.Token)
+	})
+}

@@ -9,6 +9,8 @@ LDFLAGS := -X credentials-vault/pkg/buildinfo.Version=$(VERSION) \
 
 MODULES := server client-cli gen pkg tools/staticlint
 
+BIN_EXT := $(shell go env GOEXE)
+
 .PHONY: proto mocks generate setup build build-cli build-all dev prod down test test-coverage test-coverage-html test-race \
         check-fmt fmt lint vet staticlint check \
         migrate-up migrate-down migrate-status docker-logs docker-logs-db docker-ps docker-rebuild \
@@ -46,12 +48,12 @@ setup: generate
 # Сборка сервера
 build:
 	mkdir -p bin
-	go build -C server -trimpath -ldflags "$(LDFLAGS)" -o ../bin/server ./cmd/server
+	go build -C server -trimpath -ldflags "$(LDFLAGS)" -o ../bin/server$(BIN_EXT) ./cmd/server
 
 # Сборка CLI
 build-cli:
 	mkdir -p bin
-	go build -C client-cli -trimpath -ldflags "$(LDFLAGS)" -o ../bin/credvault ./cmd/cli
+	go build -C client-cli -trimpath -ldflags "$(LDFLAGS)" -o ../bin/vault$(BIN_EXT) ./cmd/cli
 
 # Сборка всех бинарников
 build-all: build build-cli
@@ -152,7 +154,7 @@ staticlint:
 	go run ./tools/staticlint/cmd/staticlint ./server/... ./client-cli/... ./gen/... ./pkg/...
 
 # Все проверки
-check: vet lint staticlint test
+check: check-fmt vet lint staticlint test
 	@echo "✅ All checks passed!"
 
 # ═══════════════════════════════════════════

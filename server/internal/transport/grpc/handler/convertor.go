@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	authpb "credentials-vault/gen/go/auth/v1"
@@ -10,11 +11,11 @@ import (
 
 // toProtoUser конвертирует доменную модель User в proto User.
 func toProtoUser(user *domain.User) *authpb.User {
-	return &authpb.User{
-		Id:        user.ID.String(),
-		Username:  user.Username,
+	return authpb.User_builder{
+		Id:        proto.String(user.ID.String()),
+		Username:  proto.String(user.Username),
 		CreatedAt: timestamppb.New(user.CreatedAt),
-	}
+	}.Build()
 }
 
 // toDomainVaultItemType конвертирует proto ItemType в domain ItemType.
@@ -51,12 +52,12 @@ func toProtoVaultItemType(itemType domain.ItemType) vaultpb.ItemType {
 
 // toProtoVaultItem конвертирует доменную модель VaultItem в proto VaultItem.
 func toProtoVaultItem(item *domain.VaultItem) *vaultpb.VaultItem {
-	return &vaultpb.VaultItem{
-		Id:            item.ID.String(),
-		Type:          toProtoVaultItemType(item.Type),
+	return vaultpb.VaultItem_builder{
+		Id:            proto.String(item.ID.String()),
+		Type:          toProtoVaultItemType(item.Type).Enum(),
 		EncryptedData: item.EncryptedData,
 		Metadata:      item.Metadata,
 		CreatedAt:     timestamppb.New(item.CreatedAt),
 		UpdatedAt:     timestamppb.New(item.UpdatedAt),
-	}
+	}.Build()
 }

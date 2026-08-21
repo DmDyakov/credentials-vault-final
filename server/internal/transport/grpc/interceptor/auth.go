@@ -62,11 +62,16 @@ func (i *AuthInterceptor) handleLogin(
 	}
 
 	loginResp, ok := resp.(*authpb.LoginResponse)
-	if !ok || loginResp.User == nil {
+	if !ok {
 		return resp, nil
 	}
 
-	token, _, err := i.jwtManager.Generate(loginResp.User.Id)
+	user := loginResp.GetUser()
+	if user == nil {
+		return resp, nil
+	}
+
+	token, _, err := i.jwtManager.Generate(user.GetId())
 	if err != nil {
 		return nil, status.Error(codes.Internal, "failed to generate token")
 	}

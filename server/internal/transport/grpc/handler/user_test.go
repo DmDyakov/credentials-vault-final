@@ -10,6 +10,7 @@ import (
 	"go.uber.org/mock/gomock"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
 
 	authpb "credentials-vault/gen/go/auth/v1"
 	"credentials-vault/server/internal/domain"
@@ -29,10 +30,10 @@ func TestRegister(t *testing.T) {
 	}{
 		{
 			name: "success",
-			req: &authpb.RegisterRequest{
-				Username: "testuser",
-				Password: "password123",
-			},
+			req: authpb.RegisterRequest_builder{
+				Username: proto.String("testuser"),
+				Password: proto.String("password123"),
+			}.Build(),
 			setupMock: func(mockService *mocks.MockUserService) {
 				mockService.EXPECT().
 					Register(gomock.Any(), "testuser", "password123").
@@ -51,10 +52,10 @@ func TestRegister(t *testing.T) {
 		},
 		{
 			name: "duplicate user",
-			req: &authpb.RegisterRequest{
-				Username: "testuser",
-				Password: "password123",
-			},
+			req: authpb.RegisterRequest_builder{
+				Username: proto.String("testuser"),
+				Password: proto.String("password123"),
+			}.Build(),
 			setupMock: func(mockService *mocks.MockUserService) {
 				mockService.EXPECT().
 					Register(gomock.Any(), "testuser", "password123").
@@ -66,10 +67,10 @@ func TestRegister(t *testing.T) {
 		},
 		{
 			name: "validation error",
-			req: &authpb.RegisterRequest{
-				Username: "testuser",
-				Password: "password123",
-			},
+			req: authpb.RegisterRequest_builder{
+				Username: proto.String("testuser"),
+				Password: proto.String("password123"),
+			}.Build(),
 			setupMock: func(mockService *mocks.MockUserService) {
 				mockService.EXPECT().
 					Register(gomock.Any(), "testuser", "password123").
@@ -81,10 +82,10 @@ func TestRegister(t *testing.T) {
 		},
 		{
 			name: "internal error",
-			req: &authpb.RegisterRequest{
-				Username: "testuser",
-				Password: "password123",
-			},
+			req: authpb.RegisterRequest_builder{
+				Username: proto.String("testuser"),
+				Password: proto.String("password123"),
+			}.Build(),
 			setupMock: func(mockService *mocks.MockUserService) {
 				mockService.EXPECT().
 					Register(gomock.Any(), "testuser", "password123").
@@ -112,9 +113,11 @@ func TestRegister(t *testing.T) {
 				assert.NoError(t, err)
 				assert.NotNil(t, resp)
 				if tt.wantUser {
-					assert.NotNil(t, resp.User)
-					assert.Equal(t, userID.String(), resp.User.Id)
-					assert.Equal(t, "testuser", resp.User.Username)
+					assert.True(t, resp.HasUser())
+					user := resp.GetUser()
+					assert.NotNil(t, user)
+					assert.Equal(t, userID.String(), user.GetId())
+					assert.Equal(t, "testuser", user.GetUsername())
 				}
 			} else {
 				assert.Error(t, err)
@@ -142,10 +145,10 @@ func TestLogin(t *testing.T) {
 	}{
 		{
 			name: "success",
-			req: &authpb.LoginRequest{
-				Username: "testuser",
-				Password: "password123",
-			},
+			req: authpb.LoginRequest_builder{
+				Username: proto.String("testuser"),
+				Password: proto.String("password123"),
+			}.Build(),
 			setupMock: func(mockService *mocks.MockUserService) {
 				mockService.EXPECT().
 					Login(gomock.Any(), "testuser", "password123").
@@ -164,10 +167,10 @@ func TestLogin(t *testing.T) {
 		},
 		{
 			name: "invalid credentials",
-			req: &authpb.LoginRequest{
-				Username: "testuser",
-				Password: "wrongpassword",
-			},
+			req: authpb.LoginRequest_builder{
+				Username: proto.String("testuser"),
+				Password: proto.String("wrongpassword"),
+			}.Build(),
 			setupMock: func(mockService *mocks.MockUserService) {
 				mockService.EXPECT().
 					Login(gomock.Any(), "testuser", "wrongpassword").
@@ -179,10 +182,10 @@ func TestLogin(t *testing.T) {
 		},
 		{
 			name: "internal error",
-			req: &authpb.LoginRequest{
-				Username: "testuser",
-				Password: "password123",
-			},
+			req: authpb.LoginRequest_builder{
+				Username: proto.String("testuser"),
+				Password: proto.String("password123"),
+			}.Build(),
 			setupMock: func(mockService *mocks.MockUserService) {
 				mockService.EXPECT().
 					Login(gomock.Any(), "testuser", "password123").
@@ -210,9 +213,11 @@ func TestLogin(t *testing.T) {
 				assert.NoError(t, err)
 				assert.NotNil(t, resp)
 				if tt.wantUser {
-					assert.NotNil(t, resp.User)
-					assert.Equal(t, userID.String(), resp.User.Id)
-					assert.Equal(t, "testuser", resp.User.Username)
+					assert.True(t, resp.HasUser())
+					user := resp.GetUser()
+					assert.NotNil(t, user)
+					assert.Equal(t, userID.String(), user.GetId())
+					assert.Equal(t, "testuser", user.GetUsername())
 				}
 			} else {
 				assert.Error(t, err)
@@ -237,6 +242,6 @@ func TestToProtoUser(t *testing.T) {
 	protoUser := toProtoUser(user)
 
 	assert.NotNil(t, protoUser)
-	assert.Equal(t, userID.String(), protoUser.Id)
-	assert.Equal(t, "testuser", protoUser.Username)
+	assert.Equal(t, userID.String(), protoUser.GetId())
+	assert.Equal(t, "testuser", protoUser.GetUsername())
 }

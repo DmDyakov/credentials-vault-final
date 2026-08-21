@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	vaultpb "credentials-vault/gen/go/vault/v1"
@@ -27,14 +28,16 @@ func TestGetCmd(t *testing.T) {
 			name: "success",
 			args: []string{itemID},
 			setupMock: func(mockClient *mocks.MockClient) {
+				item := vaultpb.VaultItem_builder{
+					Id:        proto.String(itemID),
+					Type:      vaultpb.ItemType_ITEM_TYPE_LOGIN.Enum(),
+					CreatedAt: timestamppb.Now(),
+					UpdatedAt: timestamppb.Now(),
+				}.Build()
+
 				mockClient.EXPECT().
 					GetItem(gomock.Any(), itemID).
-					Return(&vaultpb.VaultItem{
-						Id:        itemID,
-						Type:      vaultpb.ItemType_ITEM_TYPE_LOGIN,
-						CreatedAt: timestamppb.Now(),
-						UpdatedAt: timestamppb.Now(),
-					}, nil)
+					Return(item, nil)
 			},
 			wantErr: false,
 		},

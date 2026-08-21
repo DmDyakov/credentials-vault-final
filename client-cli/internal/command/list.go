@@ -26,9 +26,9 @@ func newListCmd(cl Client) *cobra.Command {
 			fmt.Println("ID\t\t\t\t\tTYPE\t\tCREATED")
 			for _, item := range items {
 				fmt.Printf("%s\t%s\t%s\n",
-					item.Id,
-					item.Type.String(),
-					item.CreatedAt.AsTime().Format("2006-01-02 15:04:05"),
+					item.GetId(),
+					item.GetType().String(),
+					item.GetCreatedAt().AsTime().Format("2006-01-02 15:04:05"),
 				)
 			}
 

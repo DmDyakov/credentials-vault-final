@@ -12,6 +12,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
 
 	authpb "credentials-vault/gen/go/auth/v1"
 	"credentials-vault/pkg/jwt"
@@ -45,6 +46,41 @@ func setupTest(t *testing.T) (*AuthInterceptor, *mocks.MockJWTManager) {
 	return interceptor, mockJWT
 }
 
+// Вспомогательные функции для создания тестовых объектов
+func newTestUser(userID, username string) *authpb.User {
+	return authpb.User_builder{
+		Id:       proto.String(userID),
+		Username: proto.String(username),
+	}.Build()
+}
+
+func newTestLoginResponse(user *authpb.User) *authpb.LoginResponse {
+	return authpb.LoginResponse_builder{
+		User: user,
+	}.Build()
+}
+
+func newTestRegisterResponse(user *authpb.User, message string) *authpb.RegisterResponse {
+	return authpb.RegisterResponse_builder{
+		User:    user,
+		Message: proto.String(message),
+	}.Build()
+}
+
+func newTestLoginRequest(username, password string) *authpb.LoginRequest {
+	return authpb.LoginRequest_builder{
+		Username: proto.String(username),
+		Password: proto.String(password),
+	}.Build()
+}
+
+func newTestRegisterRequest(username, password string) *authpb.RegisterRequest {
+	return authpb.RegisterRequest_builder{
+		Username: proto.String(username),
+		Password: proto.String(password),
+	}.Build()
+}
+
 func TestUnary_LoginMethod(t *testing.T) {
 	interceptor, mockJWT := setupTest(t)
 
@@ -52,12 +88,8 @@ func TestUnary_LoginMethod(t *testing.T) {
 	token := jwt.Token("test-token")
 	expiresAt := time.Now().Add(24 * time.Hour)
 
-	loginResp := &authpb.LoginResponse{
-		User: &authpb.User{
-			Id:       userID,
-			Username: "testuser",
-		},
-	}
+	user := newTestUser(userID, "testuser")
+	loginResp := newTestLoginResponse(user)
 
 	mockJWT.EXPECT().
 		Generate(userID).
@@ -73,7 +105,7 @@ func TestUnary_LoginMethod(t *testing.T) {
 
 	resp, err := interceptor.Unary()(
 		ctx,
-		&authpb.LoginRequest{Username: "testuser", Password: "password123"},
+		newTestLoginRequest("testuser", "password123"),
 		&grpc.UnaryServerInfo{FullMethod: authpb.AuthService_Login_FullMethodName},
 		handler,
 	)
@@ -89,12 +121,8 @@ func TestUnary_LoginMethod_GenerateTokenError(t *testing.T) {
 
 	userID := "user-123"
 
-	loginResp := &authpb.LoginResponse{
-		User: &authpb.User{
-			Id:       userID,
-			Username: "testuser",
-		},
-	}
+	user := newTestUser(userID, "testuser")
+	loginResp := newTestLoginResponse(user)
 
 	mockJWT.EXPECT().
 		Generate(userID).
@@ -110,7 +138,7 @@ func TestUnary_LoginMethod_GenerateTokenError(t *testing.T) {
 
 	resp, err := interceptor.Unary()(
 		ctx,
-		&authpb.LoginRequest{Username: "testuser", Password: "password123"},
+		newTestLoginRequest("testuser", "password123"),
 		&grpc.UnaryServerInfo{FullMethod: authpb.AuthService_Login_FullMethodName},
 		handler,
 	)
@@ -125,13 +153,8 @@ func TestUnary_LoginMethod_GenerateTokenError(t *testing.T) {
 func TestUnary_RegisterMethod(t *testing.T) {
 	interceptor, _ := setupTest(t)
 
-	registerResp := &authpb.RegisterResponse{
-		User: &authpb.User{
-			Id:       "user-123",
-			Username: "testuser",
-		},
-		Message: "User registered successfully",
-	}
+	user := newTestUser("user-123", "testuser")
+	registerResp := newTestRegisterResponse(user, "User registered successfully")
 
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return registerResp, nil
@@ -139,7 +162,7 @@ func TestUnary_RegisterMethod(t *testing.T) {
 
 	resp, err := interceptor.Unary()(
 		context.Background(),
-		&authpb.RegisterRequest{Username: "testuser", Password: "password123"},
+		newTestRegisterRequest("testuser", "password123"),
 		&grpc.UnaryServerInfo{FullMethod: authpb.AuthService_Register_FullMethodName},
 		handler,
 	)

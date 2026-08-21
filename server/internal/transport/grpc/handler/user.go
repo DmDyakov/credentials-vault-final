@@ -6,6 +6,7 @@ import (
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
 
 	authpb "credentials-vault/gen/go/auth/v1"
 	"credentials-vault/server/internal/domain"
@@ -33,15 +34,15 @@ func (h *AuthHandler) Register(ctx context.Context, req *authpb.RegisterRequest)
 		return nil, status.Error(codes.InvalidArgument, "request is nil")
 	}
 
-	user, err := h.userService.Register(ctx, req.Username, req.Password)
+	user, err := h.userService.Register(ctx, req.GetUsername(), req.GetPassword())
 	if err != nil {
 		return nil, mapError(err)
 	}
 
-	return &authpb.RegisterResponse{
+	return authpb.RegisterResponse_builder{
 		User:    toProtoUser(user),
-		Message: "User registered successfully",
-	}, nil
+		Message: proto.String("User registered successfully"),
+	}.Build(), nil
 }
 
 func (h *AuthHandler) Login(ctx context.Context, req *authpb.LoginRequest) (*authpb.LoginResponse, error) {
@@ -49,12 +50,12 @@ func (h *AuthHandler) Login(ctx context.Context, req *authpb.LoginRequest) (*aut
 		return nil, status.Error(codes.InvalidArgument, "request is nil")
 	}
 
-	user, err := h.userService.Login(ctx, req.Username, req.Password)
+	user, err := h.userService.Login(ctx, req.GetUsername(), req.GetPassword())
 	if err != nil {
 		return nil, mapError(err)
 	}
 
-	return &authpb.LoginResponse{
+	return authpb.LoginResponse_builder{
 		User: toProtoUser(user),
-	}, nil
+	}.Build(), nil
 }

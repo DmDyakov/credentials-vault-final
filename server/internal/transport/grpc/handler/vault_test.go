@@ -10,6 +10,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
 
 	vaultpb "credentials-vault/gen/go/vault/v1"
 	"credentials-vault/server/internal/domain"
@@ -36,11 +37,11 @@ func TestCreateItem(t *testing.T) {
 		{
 			name: "success",
 			ctx:  contextWithUserID(userID),
-			req: &vaultpb.CreateItemRequest{
-				Type:          vaultpb.ItemType_ITEM_TYPE_LOGIN,
+			req: vaultpb.CreateItemRequest_builder{
+				Type:          vaultpb.ItemType_ITEM_TYPE_LOGIN.Enum(),
 				EncryptedData: []byte("encrypted"),
 				Metadata:      map[string]string{"site": "example.com"},
-			},
+			}.Build(),
 			setupMock: func(mockService *mocks.MockVaultService) {
 				mockService.EXPECT().
 					CreateItem(gomock.Any(), userID, domain.ItemTypeLogin, []byte("encrypted"), gomock.Any()).
@@ -52,10 +53,10 @@ func TestCreateItem(t *testing.T) {
 		{
 			name: "no user id",
 			ctx:  context.Background(),
-			req: &vaultpb.CreateItemRequest{
-				Type:          vaultpb.ItemType_ITEM_TYPE_LOGIN,
+			req: vaultpb.CreateItemRequest_builder{
+				Type:          vaultpb.ItemType_ITEM_TYPE_LOGIN.Enum(),
 				EncryptedData: []byte("encrypted"),
-			},
+			}.Build(),
 			setupMock: func(mockService *mocks.MockVaultService) {},
 			wantCode:  codes.Unauthenticated,
 			wantItem:  false,
@@ -63,10 +64,10 @@ func TestCreateItem(t *testing.T) {
 		{
 			name: "invalid type",
 			ctx:  contextWithUserID(userID),
-			req: &vaultpb.CreateItemRequest{
-				Type:          vaultpb.ItemType_ITEM_TYPE_UNSPECIFIED,
+			req: vaultpb.CreateItemRequest_builder{
+				Type:          vaultpb.ItemType_ITEM_TYPE_UNSPECIFIED.Enum(),
 				EncryptedData: []byte("encrypted"),
-			},
+			}.Build(),
 			setupMock: func(mockService *mocks.MockVaultService) {},
 			wantCode:  codes.InvalidArgument,
 			wantItem:  false,
@@ -89,8 +90,10 @@ func TestCreateItem(t *testing.T) {
 				assert.NoError(t, err)
 				assert.NotNil(t, resp)
 				if tt.wantItem {
-					assert.NotNil(t, resp.Item)
-					assert.NotEmpty(t, resp.Item.Id)
+					assert.True(t, resp.HasItem())
+					item := resp.GetItem()
+					assert.NotNil(t, item)
+					assert.NotEmpty(t, item.GetId())
 				}
 			} else {
 				assert.Error(t, err)
@@ -116,7 +119,9 @@ func TestGetItem(t *testing.T) {
 		{
 			name: "success",
 			ctx:  contextWithUserID(userID),
-			req:  &vaultpb.GetItemRequest{Id: itemID.String()},
+			req: vaultpb.GetItemRequest_builder{
+				Id: proto.String(itemID.String()),
+			}.Build(),
 			setupMock: func(mockService *mocks.MockVaultService) {
 				mockService.EXPECT().
 					GetItem(gomock.Any(), itemID, userID).
@@ -127,7 +132,9 @@ func TestGetItem(t *testing.T) {
 		{
 			name: "not found",
 			ctx:  contextWithUserID(userID),
-			req:  &vaultpb.GetItemRequest{Id: itemID.String()},
+			req: vaultpb.GetItemRequest_builder{
+				Id: proto.String(itemID.String()),
+			}.Build(),
 			setupMock: func(mockService *mocks.MockVaultService) {
 				mockService.EXPECT().
 					GetItem(gomock.Any(), itemID, userID).
@@ -136,9 +143,11 @@ func TestGetItem(t *testing.T) {
 			wantCode: codes.NotFound,
 		},
 		{
-			name:      "invalid id",
-			ctx:       contextWithUserID(userID),
-			req:       &vaultpb.GetItemRequest{Id: "invalid-uuid"},
+			name: "invalid id",
+			ctx:  contextWithUserID(userID),
+			req: vaultpb.GetItemRequest_builder{
+				Id: proto.String("invalid-uuid"),
+			}.Build(),
 			setupMock: func(mockService *mocks.MockVaultService) {},
 			wantCode:  codes.InvalidArgument,
 		},
@@ -159,7 +168,8 @@ func TestGetItem(t *testing.T) {
 			if tt.wantCode == codes.OK {
 				assert.NoError(t, err)
 				assert.NotNil(t, resp)
-				assert.NotNil(t, resp.Item)
+				assert.True(t, resp.HasItem())
+				assert.NotNil(t, resp.GetItem())
 			} else {
 				assert.Error(t, err)
 				st, ok := status.FromError(err)
@@ -225,7 +235,7 @@ func TestListItems(t *testing.T) {
 			if tt.wantCode == codes.OK {
 				assert.NoError(t, err)
 				assert.NotNil(t, resp)
-				assert.Len(t, resp.Items, tt.wantCount)
+				assert.Len(t, resp.GetItems(), tt.wantCount)
 			} else {
 				assert.Error(t, err)
 				st, ok := status.FromError(err)
@@ -250,10 +260,10 @@ func TestUpdateItem(t *testing.T) {
 		{
 			name: "success",
 			ctx:  contextWithUserID(userID),
-			req: &vaultpb.UpdateItemRequest{
-				Id:            itemID.String(),
+			req: vaultpb.UpdateItemRequest_builder{
+				Id:            proto.String(itemID.String()),
 				EncryptedData: []byte("new data"),
-			},
+			}.Build(),
 			setupMock: func(mockService *mocks.MockVaultService) {
 				mockService.EXPECT().
 					UpdateItem(gomock.Any(), itemID, userID, []byte("new data"), gomock.Any()).
@@ -264,10 +274,10 @@ func TestUpdateItem(t *testing.T) {
 		{
 			name: "not found",
 			ctx:  contextWithUserID(userID),
-			req: &vaultpb.UpdateItemRequest{
-				Id:            itemID.String(),
+			req: vaultpb.UpdateItemRequest_builder{
+				Id:            proto.String(itemID.String()),
 				EncryptedData: []byte("new data"),
-			},
+			}.Build(),
 			setupMock: func(mockService *mocks.MockVaultService) {
 				mockService.EXPECT().
 					UpdateItem(gomock.Any(), itemID, userID, []byte("new data"), gomock.Any()).
@@ -292,7 +302,8 @@ func TestUpdateItem(t *testing.T) {
 			if tt.wantCode == codes.OK {
 				assert.NoError(t, err)
 				assert.NotNil(t, resp)
-				assert.NotNil(t, resp.Item)
+				assert.True(t, resp.HasItem())
+				assert.NotNil(t, resp.GetItem())
 			} else {
 				assert.Error(t, err)
 				st, ok := status.FromError(err)
@@ -317,7 +328,9 @@ func TestDeleteItem(t *testing.T) {
 		{
 			name: "success",
 			ctx:  contextWithUserID(userID),
-			req:  &vaultpb.DeleteItemRequest{Id: itemID.String()},
+			req: vaultpb.DeleteItemRequest_builder{
+				Id: proto.String(itemID.String()),
+			}.Build(),
 			setupMock: func(mockService *mocks.MockVaultService) {
 				mockService.EXPECT().
 					DeleteItem(gomock.Any(), itemID, userID).
@@ -328,7 +341,9 @@ func TestDeleteItem(t *testing.T) {
 		{
 			name: "not found",
 			ctx:  contextWithUserID(userID),
-			req:  &vaultpb.DeleteItemRequest{Id: itemID.String()},
+			req: vaultpb.DeleteItemRequest_builder{
+				Id: proto.String(itemID.String()),
+			}.Build(),
 			setupMock: func(mockService *mocks.MockVaultService) {
 				mockService.EXPECT().
 					DeleteItem(gomock.Any(), itemID, userID).
@@ -353,7 +368,7 @@ func TestDeleteItem(t *testing.T) {
 			if tt.wantCode == codes.OK {
 				assert.NoError(t, err)
 				assert.NotNil(t, resp)
-				assert.NotEmpty(t, resp.Message)
+				assert.NotEmpty(t, resp.GetMessage())
 			} else {
 				assert.Error(t, err)
 				st, ok := status.FromError(err)

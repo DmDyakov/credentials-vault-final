@@ -20,17 +20,19 @@ BIN_EXT := $(shell go env GOEXE)
 # Генерация и сборка
 # ═══════════════════════════════════════════
 
+# Генерация gRPC-кода (Edition 2024)
 # Генерация gRPC-кода
 proto:
-	mkdir -p gen/auth/v1 gen/vault/v1
+	mkdir -p gen/go/auth/v1 gen/go/vault/v1
 	protoc \
 		-I api/proto \
-		--go_out=gen \
-		--go_opt=paths=source_relative \
-		--go-grpc_out=gen \
-		--go-grpc_opt=paths=source_relative \
+		--go_out=. \
+		--go_opt=module=credentials-vault \
+		--go-grpc_out=. \
+		--go-grpc_opt=module=credentials-vault \
 		api/proto/auth/v1/auth.proto \
 		api/proto/vault/v1/vault.proto
+
 
 # Генерация моков
 mocks:

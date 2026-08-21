@@ -9,19 +9,22 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/protobuf/proto"
 )
 
 // Register регистрирует нового пользователя.
 func (c *Client) Register(ctx context.Context, username, password string) error {
-	resp, err := c.auth.Register(ctx, &authpb.RegisterRequest{
-		Username: username,
-		Password: password,
-	})
+	req := authpb.RegisterRequest_builder{
+		Username: proto.String(username),
+		Password: proto.String(password),
+	}.Build()
+
+	resp, err := c.auth.Register(ctx, req)
 	if err != nil {
 		return fmt.Errorf("failed to register: %w", err)
 	}
 
-	fmt.Printf("User registered: %s\n", resp.User.Username)
+	fmt.Printf("User registered: %s\n", resp.GetUser().GetUsername())
 	return nil
 }
 
@@ -29,10 +32,12 @@ func (c *Client) Register(ctx context.Context, username, password string) error 
 func (c *Client) Login(ctx context.Context, username, password string) error {
 	var header metadata.MD
 
-	resp, err := c.auth.Login(ctx, &authpb.LoginRequest{
-		Username: username,
-		Password: password,
-	}, grpc.Header(&header))
+	req := authpb.LoginRequest_builder{
+		Username: proto.String(username),
+		Password: proto.String(password),
+	}.Build()
+
+	resp, err := c.auth.Login(ctx, req, grpc.Header(&header))
 	if err != nil {
 		return fmt.Errorf("failed to login: %w", err)
 	}
@@ -49,6 +54,6 @@ func (c *Client) Login(ctx context.Context, username, password string) error {
 		return fmt.Errorf("failed to save config: %w", err)
 	}
 
-	fmt.Printf("Logged in as: %s\n", resp.User.Username)
+	fmt.Printf("Logged in as: %s\n", resp.GetUser().GetUsername())
 	return nil
 }

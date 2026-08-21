@@ -7,12 +7,22 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	vaultpb "credentials-vault/gen/go/vault/v1"
 
 	"credentials-vault/client-cli/internal/command/mocks"
 )
+
+// newTestVaultItem вспомогательная функция для создания тестовых элементов
+func newTestVaultItem(itemType vaultpb.ItemType) *vaultpb.VaultItem {
+	return vaultpb.VaultItem_builder{
+		Id:        proto.String(uuid.New().String()),
+		Type:      itemType.Enum(),
+		CreatedAt: timestamppb.Now(),
+	}.Build()
+}
 
 func TestListCmd(t *testing.T) {
 	tests := []struct {
@@ -23,20 +33,14 @@ func TestListCmd(t *testing.T) {
 		{
 			name: "success with items",
 			setupMock: func(mockClient *mocks.MockClient) {
+				items := []*vaultpb.VaultItem{
+					newTestVaultItem(vaultpb.ItemType_ITEM_TYPE_LOGIN),
+					newTestVaultItem(vaultpb.ItemType_ITEM_TYPE_CARD),
+				}
+
 				mockClient.EXPECT().
 					ListItems(gomock.Any()).
-					Return([]*vaultpb.VaultItem{
-						{
-							Id:        uuid.New().String(),
-							Type:      vaultpb.ItemType_ITEM_TYPE_LOGIN,
-							CreatedAt: timestamppb.Now(),
-						},
-						{
-							Id:        uuid.New().String(),
-							Type:      vaultpb.ItemType_ITEM_TYPE_CARD,
-							CreatedAt: timestamppb.Now(),
-						},
-					}, nil)
+					Return(items, nil)
 			},
 			wantErr: false,
 		},

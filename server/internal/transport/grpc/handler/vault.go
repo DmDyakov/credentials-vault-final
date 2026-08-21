@@ -6,6 +6,7 @@ import (
 	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
 
 	vaultpb "credentials-vault/gen/go/vault/v1"
 	"credentials-vault/server/internal/domain"
@@ -44,19 +45,19 @@ func (h *VaultHandler) CreateItem(ctx context.Context, req *vaultpb.CreateItemRe
 		return nil, err
 	}
 
-	itemType := toDomainVaultItemType(req.Type)
+	itemType := toDomainVaultItemType(req.GetType())
 	if itemType == "" {
 		return nil, status.Error(codes.InvalidArgument, "item type is required")
 	}
 
-	item, err := h.vaultService.CreateItem(ctx, userID, itemType, req.EncryptedData, req.Metadata)
+	item, err := h.vaultService.CreateItem(ctx, userID, itemType, req.GetEncryptedData(), req.GetMetadata())
 	if err != nil {
 		return nil, mapError(err)
 	}
 
-	return &vaultpb.CreateItemResponse{
+	return vaultpb.CreateItemResponse_builder{
 		Item: toProtoVaultItem(item),
-	}, nil
+	}.Build(), nil
 }
 
 // GetItem обрабатывает запрос на получение элемента по ID.
@@ -70,7 +71,7 @@ func (h *VaultHandler) GetItem(ctx context.Context, req *vaultpb.GetItemRequest)
 		return nil, err
 	}
 
-	itemID, err := uuid.Parse(req.Id)
+	itemID, err := uuid.Parse(req.GetId())
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "invalid item id")
 	}
@@ -80,9 +81,9 @@ func (h *VaultHandler) GetItem(ctx context.Context, req *vaultpb.GetItemRequest)
 		return nil, mapError(err)
 	}
 
-	return &vaultpb.GetItemResponse{
+	return vaultpb.GetItemResponse_builder{
 		Item: toProtoVaultItem(item),
-	}, nil
+	}.Build(), nil
 }
 
 // UpdateItem обрабатывает запрос на обновление элемента.
@@ -96,19 +97,19 @@ func (h *VaultHandler) UpdateItem(ctx context.Context, req *vaultpb.UpdateItemRe
 		return nil, err
 	}
 
-	itemID, err := uuid.Parse(req.Id)
+	itemID, err := uuid.Parse(req.GetId())
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "invalid item id")
 	}
 
-	item, err := h.vaultService.UpdateItem(ctx, itemID, userID, req.EncryptedData, req.Metadata)
+	item, err := h.vaultService.UpdateItem(ctx, itemID, userID, req.GetEncryptedData(), req.GetMetadata())
 	if err != nil {
 		return nil, mapError(err)
 	}
 
-	return &vaultpb.UpdateItemResponse{
+	return vaultpb.UpdateItemResponse_builder{
 		Item: toProtoVaultItem(item),
-	}, nil
+	}.Build(), nil
 }
 
 // DeleteItem обрабатывает запрос на мягкое удаление элемента.
@@ -122,7 +123,7 @@ func (h *VaultHandler) DeleteItem(ctx context.Context, req *vaultpb.DeleteItemRe
 		return nil, err
 	}
 
-	itemID, err := uuid.Parse(req.Id)
+	itemID, err := uuid.Parse(req.GetId())
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "invalid item id")
 	}
@@ -131,9 +132,9 @@ func (h *VaultHandler) DeleteItem(ctx context.Context, req *vaultpb.DeleteItemRe
 		return nil, mapError(err)
 	}
 
-	return &vaultpb.DeleteItemResponse{
-		Message: "Item deleted successfully",
-	}, nil
+	return vaultpb.DeleteItemResponse_builder{
+		Message: proto.String("Item deleted successfully"),
+	}.Build(), nil
 }
 
 // ListItems обрабатывает запрос на получение списка элементов.
@@ -148,8 +149,8 @@ func (h *VaultHandler) ListItems(ctx context.Context, req *vaultpb.ListItemsRequ
 	}
 
 	var itemType *domain.ItemType
-	if req.Type != vaultpb.ItemType_ITEM_TYPE_UNSPECIFIED {
-		t := toDomainVaultItemType(req.Type)
+	if req.GetType() != vaultpb.ItemType_ITEM_TYPE_UNSPECIFIED {
+		t := toDomainVaultItemType(req.GetType())
 		if t == "" {
 			return nil, status.Error(codes.InvalidArgument, "invalid item type")
 		}
@@ -166,7 +167,7 @@ func (h *VaultHandler) ListItems(ctx context.Context, req *vaultpb.ListItemsRequ
 		protoItems = append(protoItems, toProtoVaultItem(item))
 	}
 
-	return &vaultpb.ListItemsResponse{
+	return vaultpb.ListItemsResponse_builder{
 		Items: protoItems,
-	}, nil
+	}.Build(), nil
 }

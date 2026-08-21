@@ -19,15 +19,15 @@ func newGetCmd(cl Client) *cobra.Command {
 				return err
 			}
 
-			fmt.Printf("ID: %s\n", item.Id)
-			fmt.Printf("Type: %s\n", item.Type.String())
-			fmt.Printf("Data: %s\n", string(item.EncryptedData))
+			fmt.Printf("ID: %s\n", item.GetId())
+			fmt.Printf("Type: %s\n", item.GetType().String())
+			fmt.Printf("Data: %s\n", string(item.GetEncryptedData()))
 			fmt.Printf("Metadata:\n")
-			for k, v := range item.Metadata {
+			for k, v := range item.GetMetadata() {
 				fmt.Printf("  %s: %s\n", k, v)
 			}
-			fmt.Printf("Created: %s\n", item.CreatedAt.AsTime().Format("2006-01-02 15:04:05"))
-			fmt.Printf("Updated: %s\n", item.UpdatedAt.AsTime().Format("2006-01-02 15:04:05"))
+			fmt.Printf("Created: %s\n", item.GetCreatedAt().AsTime().Format("2006-01-02 15:04:05"))
+			fmt.Printf("Updated: %s\n", item.GetUpdatedAt().AsTime().Format("2006-01-02 15:04:05"))
 
 			return nil
 		},

@@ -7,49 +7,56 @@ import (
 	vaultpb "credentials-vault/gen/go/vault/v1"
 
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/protobuf/proto"
 )
 
 // AddLogin добавляет логин/пароль в хранилище.
 func (c *Client) AddLogin(ctx context.Context, site, username, password string) error {
 	data := fmt.Sprintf("username=%s\npassword=%s", username, password)
 
-	metadata := map[string]string{
+	itemMetadata := map[string]string{
 		"site": site,
 	}
 
-	resp, err := c.vault.CreateItem(c.withToken(ctx), &vaultpb.CreateItemRequest{
-		Type:          vaultpb.ItemType_ITEM_TYPE_LOGIN,
+	req := vaultpb.CreateItemRequest_builder{
+		Type:          vaultpb.ItemType_ITEM_TYPE_LOGIN.Enum(),
 		EncryptedData: []byte(data),
-		Metadata:      metadata,
-	})
+		Metadata:      itemMetadata,
+	}.Build()
+
+	resp, err := c.vault.CreateItem(c.withToken(ctx), req)
 	if err != nil {
 		return fmt.Errorf("failed to add login: %w", err)
 	}
 
-	fmt.Printf("Login added: %s\n", resp.Item.Id)
+	fmt.Printf("Login added: %s\n", resp.GetItem().GetId())
 	return nil
 }
 
 // ListItems возвращает список элементов.
 func (c *Client) ListItems(ctx context.Context) ([]*vaultpb.VaultItem, error) {
-	resp, err := c.vault.ListItems(c.withToken(ctx), &vaultpb.ListItemsRequest{})
+	req := &vaultpb.ListItemsRequest{}
+
+	resp, err := c.vault.ListItems(c.withToken(ctx), req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list items: %w", err)
 	}
 
-	return resp.Items, nil
+	return resp.GetItems(), nil
 }
 
 // GetItem возвращает элемент по ID.
 func (c *Client) GetItem(ctx context.Context, id string) (*vaultpb.VaultItem, error) {
-	resp, err := c.vault.GetItem(c.withToken(ctx), &vaultpb.GetItemRequest{
-		Id: id,
-	})
+	req := vaultpb.GetItemRequest_builder{
+		Id: proto.String(id),
+	}.Build()
+
+	resp, err := c.vault.GetItem(c.withToken(ctx), req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get item: %w", err)
 	}
 
-	return resp.Item, nil
+	return resp.GetItem(), nil
 }
 
 // withToken добавляет токен в контекст.

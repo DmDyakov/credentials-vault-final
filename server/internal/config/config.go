@@ -24,6 +24,8 @@ type GRPCServerConfig struct {
 	ReadTimeout  time.Duration `env:"SERVER_READ_TIMEOUT" envDefault:"5s" validate:"gt=0"`
 	WriteTimeout time.Duration `env:"SERVER_WRITE_TIMEOUT" envDefault:"5s" validate:"gt=0"`
 	MaxMsgSize   int           `env:"SERVER_MAX_MSG_SIZE" envDefault:"4194304" validate:"gte=1024"`
+	TLSCertFile  string        `env:"TLS_CERT_FILE" envDefault:"certs/server.crt"`
+	TLSKeyFile   string        `env:"TLS_KEY_FILE" envDefault:"certs/server.key"`
 }
 
 // PostgresConfig — конфигурация подключения к PostgreSQL

@@ -40,7 +40,10 @@ func New(cfg *config.Config, logger *zap.Logger) (*App, error) {
 	vaultService := vault.NewService(vaultRepo)
 
 	jwtManager := jwt.New(cfg.JWT.Secret, cfg.JWT.AccessTokenTTL)
-	grpcServer := grpc.NewServer(cfg, logger, userService, vaultService, jwtManager)
+	grpcServer, err := grpc.NewServer(cfg, logger, userService, vaultService, jwtManager)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create gRPC server: %w", err)
+	}
 
 	return &App{
 		cfg:        cfg,

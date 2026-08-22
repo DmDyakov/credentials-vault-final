@@ -35,3 +35,6 @@ profile.cov
 
 /bin/
 /build/
+
+# TLS private keys
+certs/*.key

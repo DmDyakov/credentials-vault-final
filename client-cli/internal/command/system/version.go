@@ -1,5 +1,5 @@
-// Package info содержит информационные команды.
-package info
+// Package system содержит информационные команды.
+package system
 
 import (
 	"fmt"

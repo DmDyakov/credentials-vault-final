@@ -10,12 +10,11 @@ import (
 
 // Config - конфигурация клиента.
 type Config struct {
-	path          string `json:"-"` // не сериализуется в JSON
+	path          string `json:"-"`
 	ServerAddress string `json:"server_address"`
 	Token         string `json:"token,omitempty"`
+	CAFile        string `json:"ca_file,omitempty"`
 }
-
-const defaultServerAddress = "localhost:9090"
 
 // New создаёт конфигурацию, загружая её из файла.
 func New() (*Config, error) {
@@ -31,7 +30,9 @@ func New() (*Config, error) {
 	data, err := os.ReadFile(cfg.path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			cfg.ServerAddress = defaultServerAddress
+			if saveErr := cfg.Save(); saveErr != nil {
+				return nil, fmt.Errorf("failed to create config: %w", saveErr)
+			}
 			return cfg, nil
 		}
 		return nil, fmt.Errorf("failed to read config: %w", err)
@@ -64,4 +65,9 @@ func (c *Config) Save() error {
 	}
 
 	return nil
+}
+
+// Valid проверяет, что конфиг заполнен.
+func (c *Config) Valid() bool {
+	return c != nil && c.ServerAddress != ""
 }

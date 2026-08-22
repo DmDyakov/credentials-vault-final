@@ -18,6 +18,7 @@ import (
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/reflection"
 )
 
@@ -46,10 +47,16 @@ type Server struct {
 }
 
 // NewServer создаёт gRPC-сервер.
-func NewServer(cfg *config.Config, logger *zap.Logger, userService UserService, vaultService VaultService, jwtManager JWTManager) *Server {
+func NewServer(cfg *config.Config, logger *zap.Logger, userService UserService, vaultService VaultService, jwtManager JWTManager) (*Server, error) {
 	authInterceptor := interceptor.NewAuthInterceptor(jwtManager)
 
+	creds, err := credentials.NewServerTLSFromFile(cfg.GRPCServer.TLSCertFile, cfg.GRPCServer.TLSKeyFile)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load TLS credentials: %w", err)
+	}
+
 	s := grpc.NewServer(
+		grpc.Creds(creds),
 		grpc.UnaryInterceptor(authInterceptor.Unary()),
 	)
 
@@ -68,7 +75,7 @@ func NewServer(cfg *config.Config, logger *zap.Logger, userService UserService, 
 		Server: s,
 		addr:   cfg.GRPCServer.Address,
 		logger: logger,
-	}
+	}, nil
 }
 
 // Run запускает сервер.

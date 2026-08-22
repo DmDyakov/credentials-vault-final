@@ -2,10 +2,22 @@ package command
 
 import (
 	"context"
+	vaultpb "credentials-vault/gen/go/vault/v1"
 	"fmt"
 
 	"github.com/spf13/cobra"
 )
+
+//go:generate mockgen -source=root.go -destination=mocks/client_mock.go -package=mocks Client
+
+// Client - интерфейс клиента CLI.
+type Client interface {
+	Register(ctx context.Context, username, password string) error
+	Login(ctx context.Context, username, password string) error
+	AddLogin(ctx context.Context, site, username, password string) error
+	ListItems(ctx context.Context) ([]*vaultpb.VaultItem, error)
+	GetItem(ctx context.Context, id string) (*vaultpb.VaultItem, error)
+}
 
 // newListCmd создаёт команду list.
 func newListCmd(cl Client) *cobra.Command {

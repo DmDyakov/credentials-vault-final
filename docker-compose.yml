@@ -24,7 +24,11 @@ services:
     environment:
       GRPC_ADDRESS: ":9090"
       POSTGRES_DSN: "postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-credentials_vault}?sslmode=disable"
-      JWT_SECRET: "dev-secret"
+      JWT_SECRET: "dev-secret-123456789012345678901234567890"
+      TLS_CERT_FILE: "/certs/server.crt"
+      TLS_KEY_FILE: "/certs/server.key"
+    volumes:
+      - ./certs:/certs
     depends_on:
       postgres:
         condition: service_healthy

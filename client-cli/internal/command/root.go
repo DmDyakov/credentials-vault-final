@@ -2,34 +2,34 @@
 package command
 
 import (
-	"context"
+	"fmt"
 
 	"github.com/spf13/cobra"
 
+	"credentials-vault/client-cli/internal/client"
 	"credentials-vault/client-cli/internal/command/add"
 	"credentials-vault/client-cli/internal/command/auth"
-	"credentials-vault/client-cli/internal/command/info"
-
-	vaultpb "credentials-vault/gen/go/vault/v1"
+	"credentials-vault/client-cli/internal/command/system"
 )
 
-//go:generate mockgen -source=root.go -destination=mocks/client_mock.go -package=mocks Client
-
-// Client - интерфейс клиента CLI.
-type Client interface {
-	Register(ctx context.Context, username, password string) error
-	Login(ctx context.Context, username, password string) error
-	AddLogin(ctx context.Context, site, username, password string) error
-	ListItems(ctx context.Context) ([]*vaultpb.VaultItem, error)
-	GetItem(ctx context.Context, id string) (*vaultpb.VaultItem, error)
-}
-
 // NewRootCmd создаёт корневую команду.
-func NewRootCmd(cl Client) *cobra.Command {
+func NewRootCmd(cl *client.Client) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "vault",
 		Short: "Credentials Vault CLI",
 		Long:  `CLI-клиент для управления приватными данными в Credentials Vault.`,
+		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			switch cmd.Name() {
+			case "init", "version", "help", "completion":
+				return nil
+			}
+
+			if cl == nil {
+				return fmt.Errorf("run 'vault init' first")
+			}
+
+			return nil
+		},
 	}
 
 	cmd.AddCommand(
@@ -38,7 +38,8 @@ func NewRootCmd(cl Client) *cobra.Command {
 		add.NewAddCmd(cl),
 		newListCmd(cl),
 		newGetCmd(cl),
-		info.NewVersionCmd(),
+		system.NewInitCmd(),
+		system.NewVersionCmd(),
 	)
 
 	return cmd

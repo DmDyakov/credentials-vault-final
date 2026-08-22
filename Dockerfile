@@ -14,6 +14,7 @@ RUN go mod download
 COPY server/ ./server/
 COPY gen/ ./gen/
 COPY pkg/ ./pkg/
+COPY certs/ ./certs/
 
 RUN CGO_ENABLED=0 GOOS=linux go build -C server -o /server ./cmd/server
 
@@ -22,6 +23,7 @@ FROM alpine:3.24
 RUN apk add --no-cache ca-certificates
 
 COPY --from=builder /server /server
+COPY --from=builder /app/certs /certs
 
 EXPOSE 9090
 

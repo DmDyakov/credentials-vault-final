@@ -17,11 +17,14 @@ func run() error {
 		return fmt.Errorf("failed to load config: %w", err)
 	}
 
-	cl, err := client.New(cfg)
-	if err != nil {
-		return fmt.Errorf("failed to create client: %w", err)
+	var cl *client.Client
+	if cfg.Valid() {
+		cl, err = client.New(cfg)
+		if err != nil {
+			return fmt.Errorf("failed to create client: %w", err)
+		}
+		defer cl.Close()
 	}
-	defer cl.Close()
 
 	rootCmd := command.NewRootCmd(cl)
 	if err := rootCmd.Execute(); err != nil {

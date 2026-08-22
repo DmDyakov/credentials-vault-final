@@ -9,44 +9,21 @@ import (
 )
 
 func TestNew(t *testing.T) {
-	t.Run("default config when file not exists", func(t *testing.T) {
-		// Устанавливаем домашнюю директорию во временную
-		tmpHome := t.TempDir()
-		t.Setenv("USERPROFILE", tmpHome)
-		t.Setenv("HOME", tmpHome)
+	t.Run("config not exists", func(t *testing.T) {
+		t.Run("config not exists", func(t *testing.T) {
+			tmpHome := t.TempDir()
+			t.Setenv("USERPROFILE", tmpHome)
+			t.Setenv("HOME", tmpHome)
 
-		cfg, err := New()
+			cfg, err := New()
 
-		assert.NoError(t, err)
-		assert.NotNil(t, cfg)
-		assert.Equal(t, defaultServerAddress, cfg.ServerAddress)
-		assert.Empty(t, cfg.Token)
-		assert.NotEmpty(t, cfg.path)
+			assert.NoError(t, err)
+			assert.NotNil(t, cfg)
+			assert.False(t, cfg.Valid())
+		})
 	})
 
-	t.Run("load config from file", func(t *testing.T) {
-		tmpHome := t.TempDir()
-		t.Setenv("USERPROFILE", tmpHome)
-		t.Setenv("HOME", tmpHome)
-
-		// Создаём файл конфига
-		configDir := filepath.Join(tmpHome, ".credentials-vault")
-		err := os.MkdirAll(configDir, 0700)
-		assert.NoError(t, err)
-
-		configPath := filepath.Join(configDir, "config.json")
-		data := `{"server_address":"remote:9090","token":"test-token"}`
-		err = os.WriteFile(configPath, []byte(data), 0600)
-		assert.NoError(t, err)
-
-		cfg, err := New()
-
-		assert.NoError(t, err)
-		assert.Equal(t, "remote:9090", cfg.ServerAddress)
-		assert.Equal(t, "test-token", cfg.Token)
-	})
-
-	t.Run("invalid json", func(t *testing.T) {
+	t.Run("invalid config", func(t *testing.T) {
 		tmpHome := t.TempDir()
 		t.Setenv("USERPROFILE", tmpHome)
 		t.Setenv("HOME", tmpHome)
@@ -60,8 +37,45 @@ func TestNew(t *testing.T) {
 		assert.NoError(t, err)
 
 		_, err = New()
-
 		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to parse config")
+	})
+
+	t.Run("missing server_address", func(t *testing.T) {
+		tmpHome := t.TempDir()
+		t.Setenv("USERPROFILE", tmpHome)
+		t.Setenv("HOME", tmpHome)
+
+		configDir := filepath.Join(tmpHome, ".credentials-vault")
+		err := os.MkdirAll(configDir, 0700)
+		assert.NoError(t, err)
+
+		configPath := filepath.Join(configDir, "config.json")
+		err = os.WriteFile(configPath, []byte(`{"ca_file":"certs/server.crt"}`), 0600)
+		assert.NoError(t, err)
+
+		cfg, err := New()
+		assert.NoError(t, err)
+		assert.False(t, cfg.Valid())
+	})
+
+	t.Run("valid config", func(t *testing.T) {
+		tmpHome := t.TempDir()
+		t.Setenv("USERPROFILE", tmpHome)
+		t.Setenv("HOME", tmpHome)
+
+		configDir := filepath.Join(tmpHome, ".credentials-vault")
+		err := os.MkdirAll(configDir, 0700)
+		assert.NoError(t, err)
+
+		configPath := filepath.Join(configDir, "config.json")
+		err = os.WriteFile(configPath, []byte(`{"server_address":"remote:9090","token":"test-token"}`), 0600)
+		assert.NoError(t, err)
+
+		cfg, err := New()
+		assert.NoError(t, err)
+		assert.Equal(t, "remote:9090", cfg.ServerAddress)
+		assert.Equal(t, "test-token", cfg.Token)
 	})
 }
 

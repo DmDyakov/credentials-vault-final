@@ -22,15 +22,6 @@ func NewRegisterCmd(cl Client) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "register",
 		Short: "Регистрация нового пользователя",
-		PreRunE: func(cmd *cobra.Command, args []string) error {
-			if err := cmd.MarkFlagRequired("username"); err != nil {
-				return err
-			}
-			if err := cmd.MarkFlagRequired("password"); err != nil {
-				return err
-			}
-			return nil
-		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cl.Register(context.Background(), username, password)
 		},
@@ -38,6 +29,8 @@ func NewRegisterCmd(cl Client) *cobra.Command {
 
 	cmd.Flags().StringVarP(&username, "username", "u", "", "Username")
 	cmd.Flags().StringVarP(&password, "password", "p", "", "Password")
+	cobra.CheckErr(cmd.MarkFlagRequired("username"))
+	cobra.CheckErr(cmd.MarkFlagRequired("password"))
 
 	return cmd
 }

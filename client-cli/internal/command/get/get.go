@@ -1,14 +1,23 @@
-package command
+// Package get содержит команды получения данных.
+package get
 
 import (
 	"context"
+	vaultpb "credentials-vault/gen/go/vault/v1"
 	"fmt"
 
 	"github.com/spf13/cobra"
 )
 
-// newGetCmd создаёт команду get.
-func newGetCmd(cl Client) *cobra.Command {
+//go:generate mockgen -source=get.go -destination=mocks/client_mock.go -package=mocks Client
+
+// Client - интерфейс клиента CLI.
+type Client interface {
+	GetItem(ctx context.Context, id string) (*vaultpb.VaultItem, error)
+}
+
+// NewGetCmd создаёт команду get.
+func NewGetCmd(cl Client) *cobra.Command {
 	return &cobra.Command{
 		Use:   "get [id]",
 		Short: "Получить элемент по ID",

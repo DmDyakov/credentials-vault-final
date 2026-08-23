@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
 
-	"credentials-vault/client-cli/internal/command/mocks"
+	"credentials-vault/client-cli/internal/command/auth/mocks"
 )
 
 func TestLoginCmd(t *testing.T) {

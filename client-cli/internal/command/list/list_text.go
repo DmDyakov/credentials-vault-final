@@ -1,4 +1,4 @@
-package command
+package list
 
 import (
 	"errors"
@@ -12,7 +12,7 @@ import (
 
 	vaultpb "credentials-vault/gen/go/vault/v1"
 
-	"credentials-vault/client-cli/internal/command/mocks"
+	"credentials-vault/client-cli/internal/command/list/mocks"
 )
 
 // newTestVaultItem вспомогательная функция для создания тестовых элементов
@@ -72,7 +72,7 @@ func TestListCmd(t *testing.T) {
 			mockClient := mocks.NewMockClient(ctrl)
 			tt.setupMock(mockClient)
 
-			cmd := newListCmd(mockClient)
+			cmd := NewListCmd(mockClient)
 			err := cmd.Execute()
 
 			if tt.wantErr {

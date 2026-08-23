@@ -1,4 +1,4 @@
-package command
+package get
 
 import (
 	"errors"
@@ -12,7 +12,7 @@ import (
 
 	vaultpb "credentials-vault/gen/go/vault/v1"
 
-	"credentials-vault/client-cli/internal/command/mocks"
+	"credentials-vault/client-cli/internal/command/get/mocks"
 )
 
 func TestGetCmd(t *testing.T) {
@@ -67,7 +67,7 @@ func TestGetCmd(t *testing.T) {
 			mockClient := mocks.NewMockClient(ctrl)
 			tt.setupMock(mockClient)
 
-			cmd := newGetCmd(mockClient)
+			cmd := NewGetCmd(mockClient)
 			cmd.SetArgs(tt.args)
 
 			err := cmd.Execute()

@@ -1,4 +1,5 @@
-package command
+// Package list содержит команды получения списка данных.
+package list
 
 import (
 	"context"
@@ -8,19 +9,15 @@ import (
 	"github.com/spf13/cobra"
 )
 
-//go:generate mockgen -source=root.go -destination=mocks/client_mock.go -package=mocks Client
+//go:generate mockgen -source=list.go -destination=mocks/client_mock.go -package=mocks Client
 
 // Client - интерфейс клиента CLI.
 type Client interface {
-	Register(ctx context.Context, username, password string) error
-	Login(ctx context.Context, username, password string) error
-	AddLogin(ctx context.Context, site, username, password string) error
 	ListItems(ctx context.Context) ([]*vaultpb.VaultItem, error)
-	GetItem(ctx context.Context, id string) (*vaultpb.VaultItem, error)
 }
 
-// newListCmd создаёт команду list.
-func newListCmd(cl Client) *cobra.Command {
+// NewListCmd создаёт команду list.
+func NewListCmd(cl Client) *cobra.Command {
 	return &cobra.Command{
 		Use:   "list",
 		Short: "Список элементов",

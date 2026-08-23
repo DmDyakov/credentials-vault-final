@@ -9,6 +9,8 @@ import (
 	"credentials-vault/client-cli/internal/client"
 	"credentials-vault/client-cli/internal/command/add"
 	"credentials-vault/client-cli/internal/command/auth"
+	"credentials-vault/client-cli/internal/command/get"
+	"credentials-vault/client-cli/internal/command/list"
 	"credentials-vault/client-cli/internal/command/system"
 )
 
@@ -36,8 +38,8 @@ func NewRootCmd(cl *client.Client) *cobra.Command {
 		auth.NewRegisterCmd(cl),
 		auth.NewLoginCmd(cl),
 		add.NewAddCmd(cl),
-		newListCmd(cl),
-		newGetCmd(cl),
+		list.NewListCmd(cl),
+		get.NewGetCmd(cl),
 		system.NewInitCmd(),
 		system.NewVersionCmd(),
 	)

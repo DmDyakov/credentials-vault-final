@@ -3,7 +3,7 @@ name: CI
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [main, dev]
 
 jobs:
   lint:
@@ -41,6 +41,15 @@ jobs:
         with:
           go-version-file: 'go.work'
           cache: true
+
+      - name: Unit tests
+        run: make test
+        env:
+          JWT_SECRET: 'ci-test-secret-key-123456789012345678901234567890'
+          APP_ENV: 'test'
+
+      - name: Integration tests
+        run: make test-integration
 
       - name: Tests with coverage
         run: make test-coverage

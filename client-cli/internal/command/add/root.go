@@ -11,7 +11,8 @@ import (
 
 // Client - интерфейс клиента CLI.
 type Client interface {
-	AddLogin(ctx context.Context, site, username, password string) error
+	AddCredentials(ctx context.Context, site, username, password string) error
+	AddCard(ctx context.Context, brand, bank, number, holder, expiry, cvv string) error
 }
 
 // NewAddCmd создаёт команду add.
@@ -22,7 +23,8 @@ func NewAddCmd(cl Client) *cobra.Command {
 	}
 
 	cmd.AddCommand(
-		newLoginCmd(cl),
+		newCredentialsCmd(cl),
+		newCardCmd(cl),
 	)
 
 	return cmd

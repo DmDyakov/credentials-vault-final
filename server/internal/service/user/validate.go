@@ -6,7 +6,7 @@ import (
 	"credentials-vault/server/internal/domain"
 )
 
-func validateRegisterCredentials(username, password string) error {
+func validateRegisterCredentials(username, password string, encryptionSalt []byte) error {
 	username = strings.TrimSpace(username)
 
 	if username == "" {
@@ -26,6 +26,9 @@ func validateRegisterCredentials(username, password string) error {
 	}
 	if len(password) > 72 {
 		return domain.ErrPasswordTooLong
+	}
+	if len(encryptionSalt) == 0 {
+		return domain.ErrSaltRequired
 	}
 
 	return nil

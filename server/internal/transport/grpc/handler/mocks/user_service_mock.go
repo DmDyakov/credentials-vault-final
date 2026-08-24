@@ -57,16 +57,16 @@ func (mr *MockUserServiceMockRecorder) Login(ctx, username, password any) *gomoc
 }
 
 // Register mocks base method.
-func (m *MockUserService) Register(ctx context.Context, username, password string) (*domain.User, error) {
+func (m *MockUserService) Register(ctx context.Context, username, password string, encryptionSalt []byte) (*domain.User, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Register", ctx, username, password)
+	ret := m.ctrl.Call(m, "Register", ctx, username, password, encryptionSalt)
 	ret0, _ := ret[0].(*domain.User)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Register indicates an expected call of Register.
-func (mr *MockUserServiceMockRecorder) Register(ctx, username, password any) *gomock.Call {
+func (mr *MockUserServiceMockRecorder) Register(ctx, username, password, encryptionSalt any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Register", reflect.TypeOf((*MockUserService)(nil).Register), ctx, username, password)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Register", reflect.TypeOf((*MockUserService)(nil).Register), ctx, username, password, encryptionSalt)
 }

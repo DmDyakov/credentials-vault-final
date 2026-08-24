@@ -23,7 +23,7 @@ import (
 )
 
 type UserService interface {
-	Register(ctx context.Context, username, password string) (*domain.User, error)
+	Register(ctx context.Context, username, password string, encryptionSalt []byte) (*domain.User, error) // НОВЫЙ
 	Login(ctx context.Context, username, password string) (*domain.User, error)
 }
 

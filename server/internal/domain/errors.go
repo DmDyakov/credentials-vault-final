@@ -13,6 +13,7 @@ var (
 	ErrUsernameTooLong    = errors.New("username must be at most 64 characters")
 	ErrPasswordTooShort   = errors.New("password must be at least 6 characters")
 	ErrPasswordTooLong    = errors.New("password must be at most 72 characters")
+	ErrSaltRequired       = errors.New("salt is required")
 )
 
 var (

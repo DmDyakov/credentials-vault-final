@@ -11,7 +11,7 @@ package mocks
 
 import (
 	context "context"
-	vaultv1 "credentials-vault/gen/go/vault/v1"
+	model "credentials-vault/client-cli/internal/model"
 	reflect "reflect"
 
 	gomock "go.uber.org/mock/gomock"
@@ -42,10 +42,10 @@ func (m *MockClient) EXPECT() *MockClientMockRecorder {
 }
 
 // GetItem mocks base method.
-func (m *MockClient) GetItem(ctx context.Context, id string) (*vaultv1.VaultItem, error) {
+func (m *MockClient) GetItem(ctx context.Context, id string) (*model.VaultItem, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetItem", ctx, id)
-	ret0, _ := ret[0].(*vaultv1.VaultItem)
+	ret0, _ := ret[0].(*model.VaultItem)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

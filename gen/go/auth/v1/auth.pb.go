@@ -161,6 +161,7 @@ type RegisterRequest struct {
 	state                  protoimpl.MessageState `protogen:"opaque.v1"`
 	xxx_hidden_Username    *string                `protobuf:"bytes,1,opt,name=username"`
 	xxx_hidden_Password    *string                `protobuf:"bytes,2,opt,name=password"`
+	xxx_hidden_Salt        []byte                 `protobuf:"bytes,3,opt,name=salt"`
 	XXX_raceDetectHookData protoimpl.RaceDetectHookData
 	XXX_presence           [1]uint32
 	unknownFields          protoimpl.UnknownFields
@@ -212,14 +213,29 @@ func (x *RegisterRequest) GetPassword() string {
 	return ""
 }
 
+func (x *RegisterRequest) GetSalt() []byte {
+	if x != nil {
+		return x.xxx_hidden_Salt
+	}
+	return nil
+}
+
 func (x *RegisterRequest) SetUsername(v string) {
 	x.xxx_hidden_Username = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 2)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 3)
 }
 
 func (x *RegisterRequest) SetPassword(v string) {
 	x.xxx_hidden_Password = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 2)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 3)
+}
+
+func (x *RegisterRequest) SetSalt(v []byte) {
+	if v == nil {
+		v = []byte{}
+	}
+	x.xxx_hidden_Salt = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 3)
 }
 
 func (x *RegisterRequest) HasUsername() bool {
@@ -236,6 +252,13 @@ func (x *RegisterRequest) HasPassword() bool {
 	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
 }
 
+func (x *RegisterRequest) HasSalt() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 2)
+}
+
 func (x *RegisterRequest) ClearUsername() {
 	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
 	x.xxx_hidden_Username = nil
@@ -246,11 +269,17 @@ func (x *RegisterRequest) ClearPassword() {
 	x.xxx_hidden_Password = nil
 }
 
+func (x *RegisterRequest) ClearSalt() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 2)
+	x.xxx_hidden_Salt = nil
+}
+
 type RegisterRequest_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
 	Username *string
 	Password *string
+	Salt     []byte
 }
 
 func (b0 RegisterRequest_builder) Build() *RegisterRequest {
@@ -258,12 +287,16 @@ func (b0 RegisterRequest_builder) Build() *RegisterRequest {
 	b, x := &b0, m0
 	_, _ = b, x
 	if b.Username != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 2)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 3)
 		x.xxx_hidden_Username = b.Username
 	}
 	if b.Password != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 2)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 3)
 		x.xxx_hidden_Password = b.Password
+	}
+	if b.Salt != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 3)
+		x.xxx_hidden_Salt = b.Salt
 	}
 	return m0
 }
@@ -483,10 +516,13 @@ func (b0 LoginRequest_builder) Build() *LoginRequest {
 }
 
 type LoginResponse struct {
-	state           protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_User *User                  `protobuf:"bytes,1,opt,name=user"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	state                  protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_User        *User                  `protobuf:"bytes,1,opt,name=user"`
+	xxx_hidden_Salt        []byte                 `protobuf:"bytes,2,opt,name=salt"`
+	XXX_raceDetectHookData protoimpl.RaceDetectHookData
+	XXX_presence           [1]uint32
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
 }
 
 func (x *LoginResponse) Reset() {
@@ -521,8 +557,23 @@ func (x *LoginResponse) GetUser() *User {
 	return nil
 }
 
+func (x *LoginResponse) GetSalt() []byte {
+	if x != nil {
+		return x.xxx_hidden_Salt
+	}
+	return nil
+}
+
 func (x *LoginResponse) SetUser(v *User) {
 	x.xxx_hidden_User = v
+}
+
+func (x *LoginResponse) SetSalt(v []byte) {
+	if v == nil {
+		v = []byte{}
+	}
+	x.xxx_hidden_Salt = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 2)
 }
 
 func (x *LoginResponse) HasUser() bool {
@@ -532,14 +583,27 @@ func (x *LoginResponse) HasUser() bool {
 	return x.xxx_hidden_User != nil
 }
 
+func (x *LoginResponse) HasSalt() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
+}
+
 func (x *LoginResponse) ClearUser() {
 	x.xxx_hidden_User = nil
+}
+
+func (x *LoginResponse) ClearSalt() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 1)
+	x.xxx_hidden_Salt = nil
 }
 
 type LoginResponse_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
 	User *User
+	Salt []byte
 }
 
 func (b0 LoginResponse_builder) Build() *LoginResponse {
@@ -547,6 +611,10 @@ func (b0 LoginResponse_builder) Build() *LoginResponse {
 	b, x := &b0, m0
 	_, _ = b, x
 	x.xxx_hidden_User = b.User
+	if b.Salt != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 2)
+		x.xxx_hidden_Salt = b.Salt
+	}
 	return m0
 }
 
@@ -559,18 +627,20 @@ const file_auth_v1_auth_proto_rawDesc = "" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1a\n" +
 	"\busername\x18\x02 \x01(\tR\busername\x129\n" +
 	"\n" +
-	"created_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\"I\n" +
+	"created_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\"]\n" +
 	"\x0fRegisterRequest\x12\x1a\n" +
 	"\busername\x18\x01 \x01(\tR\busername\x12\x1a\n" +
-	"\bpassword\x18\x02 \x01(\tR\bpassword\"a\n" +
+	"\bpassword\x18\x02 \x01(\tR\bpassword\x12\x12\n" +
+	"\x04salt\x18\x03 \x01(\fR\x04salt\"a\n" +
 	"\x10RegisterResponse\x123\n" +
 	"\x04user\x18\x01 \x01(\v2\x1f.credentials_vault.auth.v1.UserR\x04user\x12\x18\n" +
 	"\amessage\x18\x02 \x01(\tR\amessage\"F\n" +
 	"\fLoginRequest\x12\x1a\n" +
 	"\busername\x18\x01 \x01(\tR\busername\x12\x1a\n" +
-	"\bpassword\x18\x02 \x01(\tR\bpassword\"D\n" +
+	"\bpassword\x18\x02 \x01(\tR\bpassword\"X\n" +
 	"\rLoginResponse\x123\n" +
-	"\x04user\x18\x01 \x01(\v2\x1f.credentials_vault.auth.v1.UserR\x04user2\xce\x01\n" +
+	"\x04user\x18\x01 \x01(\v2\x1f.credentials_vault.auth.v1.UserR\x04user\x12\x12\n" +
+	"\x04salt\x18\x02 \x01(\fR\x04salt2\xce\x01\n" +
 	"\vAuthService\x12c\n" +
 	"\bRegister\x12*.credentials_vault.auth.v1.RegisterRequest\x1a+.credentials_vault.auth.v1.RegisterResponse\x12Z\n" +
 	"\x05Login\x12'.credentials_vault.auth.v1.LoginRequest\x1a(.credentials_vault.auth.v1.LoginResponseB)Z'credentials-vault/gen/go/auth/v1;authv1b\beditionsp\xe9\a"

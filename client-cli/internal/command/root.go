@@ -37,6 +37,7 @@ func NewRootCmd(cl *client.Client) *cobra.Command {
 	cmd.AddCommand(
 		auth.NewRegisterCmd(cl),
 		auth.NewLoginCmd(cl),
+		auth.NewLogoutCmd(cl),
 		add.NewAddCmd(cl),
 		list.NewListCmd(cl),
 		get.NewGetCmd(cl),

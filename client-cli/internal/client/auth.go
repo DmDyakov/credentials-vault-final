@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 
+	"credentials-vault/client-cli/internal/crypto"
+	"credentials-vault/client-cli/internal/session"
 	authpb "credentials-vault/gen/go/auth/v1"
 
 	"google.golang.org/grpc"
@@ -14,9 +16,15 @@ import (
 
 // Register регистрирует нового пользователя.
 func (c *Client) Register(ctx context.Context, username, password string) error {
+	salt, err := crypto.GenerateSalt()
+	if err != nil {
+		return fmt.Errorf("failed to generate salt: %w", err)
+	}
+
 	req := authpb.RegisterRequest_builder{
 		Username: proto.String(username),
 		Password: proto.String(password),
+		Salt:     salt,
 	}.Build()
 
 	resp, err := c.auth.Register(ctx, req)
@@ -24,11 +32,20 @@ func (c *Client) Register(ctx context.Context, username, password string) error 
 		return fmt.Errorf("failed to register: %w", err)
 	}
 
+	key, err := crypto.DeriveKey(password, salt)
+	if err != nil {
+		return fmt.Errorf("failed to derive key: %w", err)
+	}
+
+	if err := session.Save(key, session.DefaultTTL); err != nil {
+		return fmt.Errorf("failed to save key: %w", err)
+	}
+
 	fmt.Printf("User registered: %s\n", resp.GetUser().GetUsername())
 	return nil
 }
 
-// Login выполняет вход и сохраняет токен.
+// Login выполняет вход.
 func (c *Client) Login(ctx context.Context, username, password string) error {
 	var header metadata.MD
 
@@ -54,6 +71,20 @@ func (c *Client) Login(ctx context.Context, username, password string) error {
 		return fmt.Errorf("failed to save config: %w", err)
 	}
 
+	key, err := crypto.DeriveKey(password, resp.GetSalt())
+	if err != nil {
+		return fmt.Errorf("failed to derive key: %w", err)
+	}
+
+	if err := session.Save(key, session.DefaultTTL); err != nil {
+		return fmt.Errorf("failed to save key: %w", err)
+	}
+
 	fmt.Printf("Logged in as: %s\n", resp.GetUser().GetUsername())
 	return nil
+}
+
+// Logout удаляет ключ из keychain.
+func (c *Client) Logout() error {
+	return session.Delete()
 }

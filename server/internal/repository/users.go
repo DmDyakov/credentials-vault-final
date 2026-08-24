@@ -22,8 +22,8 @@ func NewUserRepository(db *sql.DB) *UserRepository {
 
 func (r *UserRepository) Create(ctx context.Context, user *domain.User) error {
 	query := `
-        INSERT INTO users (username, password_hash)
-        VALUES ($1, $2)
+        INSERT INTO users (username, password_hash, encryption_salt)
+        VALUES ($1, $2, $3)
         RETURNING id, created_at, updated_at
     `
 
@@ -32,6 +32,7 @@ func (r *UserRepository) Create(ctx context.Context, user *domain.User) error {
 		query,
 		user.Username,
 		user.Password,
+		user.Salt,
 	).Scan(&user.ID, &user.CreatedAt, &user.UpdatedAt)
 
 	if err != nil {
@@ -47,7 +48,7 @@ func (r *UserRepository) Create(ctx context.Context, user *domain.User) error {
 func (r *UserRepository) FindByUsername(ctx context.Context, username string) (*domain.User, error) {
 	user := &domain.User{}
 	query := `
-        SELECT id, username, password_hash, created_at, updated_at
+        SELECT id, username, password_hash, encryption_salt, created_at, updated_at
         FROM users
         WHERE username = $1
     `
@@ -56,6 +57,7 @@ func (r *UserRepository) FindByUsername(ctx context.Context, username string) (*
 		&user.ID,
 		&user.Username,
 		&user.Password,
+		&user.Salt,
 		&user.CreatedAt,
 		&user.UpdatedAt,
 	)

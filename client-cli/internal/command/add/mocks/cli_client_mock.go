@@ -40,16 +40,30 @@ func (m *MockClient) EXPECT() *MockClientMockRecorder {
 	return m.recorder
 }
 
-// AddLogin mocks base method.
-func (m *MockClient) AddLogin(ctx context.Context, site, username, password string) error {
+// AddCard mocks base method.
+func (m *MockClient) AddCard(ctx context.Context, brand, bank, number, holder, expiry, cvv string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AddLogin", ctx, site, username, password)
+	ret := m.ctrl.Call(m, "AddCard", ctx, brand, bank, number, holder, expiry, cvv)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// AddLogin indicates an expected call of AddLogin.
-func (mr *MockClientMockRecorder) AddLogin(ctx, site, username, password any) *gomock.Call {
+// AddCard indicates an expected call of AddCard.
+func (mr *MockClientMockRecorder) AddCard(ctx, brand, bank, number, holder, expiry, cvv any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddLogin", reflect.TypeOf((*MockClient)(nil).AddLogin), ctx, site, username, password)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddCard", reflect.TypeOf((*MockClient)(nil).AddCard), ctx, brand, bank, number, holder, expiry, cvv)
+}
+
+// AddCredentials mocks base method.
+func (m *MockClient) AddCredentials(ctx context.Context, site, username, password string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AddCredentials", ctx, site, username, password)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// AddCredentials indicates an expected call of AddCredentials.
+func (mr *MockClientMockRecorder) AddCredentials(ctx, site, username, password any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddCredentials", reflect.TypeOf((*MockClient)(nil).AddCredentials), ctx, site, username, password)
 }

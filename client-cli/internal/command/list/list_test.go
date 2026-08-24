@@ -3,25 +3,24 @@ package list
 import (
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
-	"google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/types/known/timestamppb"
-
-	vaultpb "credentials-vault/gen/go/vault/v1"
 
 	"credentials-vault/client-cli/internal/command/list/mocks"
+	"credentials-vault/client-cli/internal/model"
 )
 
-// newTestVaultItem вспомогательная функция для создания тестовых элементов
-func newTestVaultItem(itemType vaultpb.ItemType) *vaultpb.VaultItem {
-	return vaultpb.VaultItem_builder{
-		Id:        proto.String(uuid.New().String()),
-		Type:      itemType.Enum(),
-		CreatedAt: timestamppb.Now(),
-	}.Build()
+func newTestListVaultItem() *model.ListVaultItem {
+	return &model.ListVaultItem{
+		ID:        uuid.New().String(),
+		Type:      "ITEM_TYPE_LOGIN",
+		Metadata:  map[string]string{"site": "example.com"},
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
 }
 
 func TestListCmd(t *testing.T) {
@@ -33,9 +32,9 @@ func TestListCmd(t *testing.T) {
 		{
 			name: "success with items",
 			setupMock: func(mockClient *mocks.MockClient) {
-				items := []*vaultpb.VaultItem{
-					newTestVaultItem(vaultpb.ItemType_ITEM_TYPE_LOGIN),
-					newTestVaultItem(vaultpb.ItemType_ITEM_TYPE_CARD),
+				items := []*model.ListVaultItem{
+					newTestListVaultItem(),
+					newTestListVaultItem(),
 				}
 
 				mockClient.EXPECT().
@@ -49,7 +48,7 @@ func TestListCmd(t *testing.T) {
 			setupMock: func(mockClient *mocks.MockClient) {
 				mockClient.EXPECT().
 					ListItems(gomock.Any()).
-					Return([]*vaultpb.VaultItem{}, nil)
+					Return([]*model.ListVaultItem{}, nil)
 			},
 			wantErr: false,
 		},

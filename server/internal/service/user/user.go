@@ -27,8 +27,8 @@ func NewService(repo UserRepository) *UserService {
 	}
 }
 
-func (s *UserService) Register(ctx context.Context, username, password string) (*domain.User, error) {
-	if err := validateRegisterCredentials(username, password); err != nil {
+func (s *UserService) Register(ctx context.Context, username, password string, salt []byte) (*domain.User, error) {
+	if err := validateRegisterCredentials(username, password, salt); err != nil {
 		return nil, err
 	}
 
@@ -49,6 +49,7 @@ func (s *UserService) Register(ctx context.Context, username, password string) (
 	user := &domain.User{
 		Username: username,
 		Password: string(hashedPassword),
+		Salt:     salt,
 	}
 
 	if err := s.repo.Create(ctx, user); err != nil {

@@ -10,7 +10,7 @@ import (
 	"credentials-vault/client-cli/internal/command/add/mocks"
 )
 
-func TestAddLoginCmd(t *testing.T) {
+func TestAddCredentialsCmd(t *testing.T) {
 	tests := []struct {
 		name      string
 		args      []string
@@ -26,7 +26,7 @@ func TestAddLoginCmd(t *testing.T) {
 			},
 			setupMock: func(mockClient *mocks.MockClient) {
 				mockClient.EXPECT().
-					AddLogin(gomock.Any(), "example.com", "user", "pass").
+					AddCredentials(gomock.Any(), "example.com", "user", "pass").
 					Return(nil)
 			},
 			wantErr: false,
@@ -40,7 +40,7 @@ func TestAddLoginCmd(t *testing.T) {
 			},
 			setupMock: func(mockClient *mocks.MockClient) {
 				mockClient.EXPECT().
-					AddLogin(gomock.Any(), "example.com", "user", "pass").
+					AddCredentials(gomock.Any(), "example.com", "user", "pass").
 					Return(errors.New("add failed"))
 			},
 			wantErr: true,
@@ -82,7 +82,7 @@ func TestAddLoginCmd(t *testing.T) {
 			mockClient := mocks.NewMockClient(ctrl)
 			tt.setupMock(mockClient)
 
-			cmd := newLoginCmd(mockClient)
+			cmd := newCredentialsCmd(mockClient)
 			cmd.SetArgs(tt.args)
 
 			err := cmd.Execute()

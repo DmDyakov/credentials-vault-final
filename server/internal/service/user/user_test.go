@@ -1,7 +1,9 @@
+// server/internal/service/user/user_test.go
 package user
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"testing"
 
@@ -16,11 +18,13 @@ import (
 
 func TestRegister(t *testing.T) {
 	userID := uuid.New()
+	salt := []byte("test-salt-12345")
 
 	tests := []struct {
 		name      string
 		username  string
 		password  string
+		salt      []byte
 		setupMock func(*mocks.MockUserRepository)
 		wantErr   error
 		wantUser  bool
@@ -29,6 +33,7 @@ func TestRegister(t *testing.T) {
 			name:     "success",
 			username: "testuser",
 			password: "password123",
+			salt:     salt,
 			setupMock: func(mockRepo *mocks.MockUserRepository) {
 				mockRepo.EXPECT().
 					FindByUsername(gomock.Any(), "testuser").
@@ -48,6 +53,7 @@ func TestRegister(t *testing.T) {
 			name:     "duplicate user",
 			username: "testuser",
 			password: "password123",
+			salt:     salt,
 			setupMock: func(mockRepo *mocks.MockUserRepository) {
 				mockRepo.EXPECT().
 					FindByUsername(gomock.Any(), "testuser").
@@ -57,57 +63,105 @@ func TestRegister(t *testing.T) {
 			wantUser: false,
 		},
 		{
-			name:     "empty username",
-			username: "",
-			password: "password123",
-			setupMock: func(mockRepo *mocks.MockUserRepository) {
-			},
-			wantErr:  domain.ErrUsernameRequired,
-			wantUser: false,
+			name:      "missing salt",
+			username:  "testuser",
+			password:  "password123",
+			salt:      nil,
+			setupMock: func(mockRepo *mocks.MockUserRepository) {},
+			wantErr:   domain.ErrSaltRequired,
+			wantUser:  false,
 		},
 		{
-			name:     "short username",
-			username: "ab",
-			password: "password123",
-			setupMock: func(mockRepo *mocks.MockUserRepository) {
-			},
-			wantErr:  domain.ErrUsernameTooShort,
-			wantUser: false,
+			name:      "empty salt",
+			username:  "testuser",
+			password:  "password123",
+			salt:      []byte{},
+			setupMock: func(mockRepo *mocks.MockUserRepository) {},
+			wantErr:   domain.ErrSaltRequired,
+			wantUser:  false,
 		},
 		{
-			name:     "long username",
-			username: strings.Repeat("a", 65),
-			password: "password123",
-			setupMock: func(mockRepo *mocks.MockUserRepository) {
-			},
-			wantErr:  domain.ErrUsernameTooLong,
-			wantUser: false,
+			name:      "empty username",
+			username:  "",
+			password:  "password123",
+			salt:      salt,
+			setupMock: func(mockRepo *mocks.MockUserRepository) {},
+			wantErr:   domain.ErrUsernameRequired,
+			wantUser:  false,
 		},
 		{
-			name:     "empty password",
+			name:      "short username",
+			username:  "ab",
+			password:  "password123",
+			salt:      salt,
+			setupMock: func(mockRepo *mocks.MockUserRepository) {},
+			wantErr:   domain.ErrUsernameTooShort,
+			wantUser:  false,
+		},
+		{
+			name:      "long username",
+			username:  strings.Repeat("a", 65),
+			password:  "password123",
+			salt:      salt,
+			setupMock: func(mockRepo *mocks.MockUserRepository) {},
+			wantErr:   domain.ErrUsernameTooLong,
+			wantUser:  false,
+		},
+		{
+			name:      "empty password",
+			username:  "testuser",
+			password:  "",
+			salt:      salt,
+			setupMock: func(mockRepo *mocks.MockUserRepository) {},
+			wantErr:   domain.ErrPasswordRequired,
+			wantUser:  false,
+		},
+		{
+			name:      "short password",
+			username:  "testuser",
+			password:  "123",
+			salt:      salt,
+			setupMock: func(mockRepo *mocks.MockUserRepository) {},
+			wantErr:   domain.ErrPasswordTooShort,
+			wantUser:  false,
+		},
+		{
+			name:      "long password",
+			username:  "testuser",
+			password:  strings.Repeat("p", 73),
+			salt:      salt,
+			setupMock: func(mockRepo *mocks.MockUserRepository) {},
+			wantErr:   domain.ErrPasswordTooLong,
+			wantUser:  false,
+		},
+		{
+			name:     "repository error",
 			username: "testuser",
-			password: "",
+			password: "password123",
+			salt:     salt,
 			setupMock: func(mockRepo *mocks.MockUserRepository) {
+				mockRepo.EXPECT().
+					FindByUsername(gomock.Any(), "testuser").
+					Return(nil, errors.New("database error"))
 			},
-			wantErr:  domain.ErrPasswordRequired,
+			wantErr:  errors.New("failed to check user existence"),
 			wantUser: false,
 		},
 		{
-			name:     "short password",
+			name:     "create error",
 			username: "testuser",
-			password: "123",
+			password: "password123",
+			salt:     salt,
 			setupMock: func(mockRepo *mocks.MockUserRepository) {
+				mockRepo.EXPECT().
+					FindByUsername(gomock.Any(), "testuser").
+					Return(nil, domain.ErrUserNotFound)
+
+				mockRepo.EXPECT().
+					Create(gomock.Any(), gomock.Any()).
+					Return(errors.New("insert failed"))
 			},
-			wantErr:  domain.ErrPasswordTooShort,
-			wantUser: false,
-		},
-		{
-			name:     "long password",
-			username: "testuser",
-			password: strings.Repeat("p", 73),
-			setupMock: func(mockRepo *mocks.MockUserRepository) {
-			},
-			wantErr:  domain.ErrPasswordTooLong,
+			wantErr:  errors.New("failed to create user"),
 			wantUser: false,
 		},
 	}
@@ -122,11 +176,22 @@ func TestRegister(t *testing.T) {
 
 			tt.setupMock(mockRepo)
 
-			user, err := service.Register(context.Background(), tt.username, tt.password)
+			user, err := service.Register(context.Background(), tt.username, tt.password, tt.salt)
 
 			if tt.wantErr != nil {
 				assert.Error(t, err)
-				assert.ErrorIs(t, err, tt.wantErr)
+				if errors.Is(tt.wantErr, domain.ErrUserAlreadyExists) ||
+					errors.Is(tt.wantErr, domain.ErrUsernameRequired) ||
+					errors.Is(tt.wantErr, domain.ErrUsernameTooShort) ||
+					errors.Is(tt.wantErr, domain.ErrUsernameTooLong) ||
+					errors.Is(tt.wantErr, domain.ErrPasswordRequired) ||
+					errors.Is(tt.wantErr, domain.ErrPasswordTooShort) ||
+					errors.Is(tt.wantErr, domain.ErrPasswordTooLong) ||
+					errors.Is(tt.wantErr, domain.ErrSaltRequired) {
+					assert.ErrorIs(t, err, tt.wantErr)
+				} else {
+					assert.Contains(t, err.Error(), tt.wantErr.Error())
+				}
 				assert.Nil(t, user)
 			} else {
 				assert.NoError(t, err)
@@ -134,6 +199,7 @@ func TestRegister(t *testing.T) {
 					assert.NotNil(t, user)
 					assert.NotEmpty(t, user.ID)
 					assert.Equal(t, tt.username, user.Username)
+					assert.Equal(t, tt.salt, user.Salt)
 				}
 			}
 		})
@@ -143,6 +209,7 @@ func TestRegister(t *testing.T) {
 func TestLogin(t *testing.T) {
 	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte("password123"), bcrypt.DefaultCost)
 	userID := uuid.New()
+	salt := []byte("test-salt-12345")
 
 	tests := []struct {
 		name      string
@@ -163,6 +230,7 @@ func TestLogin(t *testing.T) {
 						ID:       userID,
 						Username: "testuser",
 						Password: string(hashedPassword),
+						Salt:     salt,
 					}, nil)
 			},
 			wantErr:  nil,
@@ -179,6 +247,7 @@ func TestLogin(t *testing.T) {
 						ID:       userID,
 						Username: "testuser",
 						Password: string(hashedPassword),
+						Salt:     salt,
 					}, nil)
 			},
 			wantErr:  domain.ErrInvalidCredentials,
@@ -214,6 +283,18 @@ func TestLogin(t *testing.T) {
 			wantErr:  domain.ErrPasswordRequired,
 			wantUser: false,
 		},
+		{
+			name:     "repository error",
+			username: "testuser",
+			password: "password123",
+			setupMock: func(mockRepo *mocks.MockUserRepository) {
+				mockRepo.EXPECT().
+					FindByUsername(gomock.Any(), "testuser").
+					Return(nil, errors.New("database error"))
+			},
+			wantErr:  errors.New("failed to find user"),
+			wantUser: false,
+		},
 	}
 
 	for _, tt := range tests {
@@ -230,13 +311,20 @@ func TestLogin(t *testing.T) {
 
 			if tt.wantErr != nil {
 				assert.Error(t, err)
-				assert.ErrorIs(t, err, tt.wantErr)
+				if errors.Is(tt.wantErr, domain.ErrInvalidCredentials) ||
+					errors.Is(tt.wantErr, domain.ErrUsernameRequired) ||
+					errors.Is(tt.wantErr, domain.ErrPasswordRequired) {
+					assert.ErrorIs(t, err, tt.wantErr)
+				} else {
+					assert.Contains(t, err.Error(), tt.wantErr.Error())
+				}
 				assert.Nil(t, user)
 			} else {
 				assert.NoError(t, err)
 				if tt.wantUser {
 					assert.NotNil(t, user)
 					assert.Equal(t, tt.username, user.Username)
+					assert.Equal(t, salt, user.Salt)
 				}
 			}
 		})

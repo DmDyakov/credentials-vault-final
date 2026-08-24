@@ -3,21 +3,16 @@ package get
 import (
 	"errors"
 	"testing"
+	"time"
 
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
-	"google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/types/known/timestamppb"
-
-	vaultpb "credentials-vault/gen/go/vault/v1"
 
 	"credentials-vault/client-cli/internal/command/get/mocks"
+	"credentials-vault/client-cli/internal/model"
 )
 
 func TestGetCmd(t *testing.T) {
-	itemID := uuid.New().String()
-
 	tests := []struct {
 		name      string
 		args      []string
@@ -26,27 +21,34 @@ func TestGetCmd(t *testing.T) {
 	}{
 		{
 			name: "success",
-			args: []string{itemID},
+			args: []string{"test-id"},
 			setupMock: func(mockClient *mocks.MockClient) {
-				item := vaultpb.VaultItem_builder{
-					Id:        proto.String(itemID),
-					Type:      vaultpb.ItemType_ITEM_TYPE_LOGIN.Enum(),
-					CreatedAt: timestamppb.Now(),
-					UpdatedAt: timestamppb.Now(),
-				}.Build()
+				item := &model.VaultItem{
+					ID:   "test-id",
+					Type: "ITEM_TYPE_LOGIN",
+					Secret: map[string]string{
+						"username": "bob",
+						"password": "secret",
+					},
+					Metadata: map[string]string{
+						"site": "example.com",
+					},
+					CreatedAt: time.Now(),
+					UpdatedAt: time.Now(),
+				}
 
 				mockClient.EXPECT().
-					GetItem(gomock.Any(), itemID).
+					GetItem(gomock.Any(), "test-id").
 					Return(item, nil)
 			},
 			wantErr: false,
 		},
 		{
 			name: "error",
-			args: []string{itemID},
+			args: []string{"test-id"},
 			setupMock: func(mockClient *mocks.MockClient) {
 				mockClient.EXPECT().
-					GetItem(gomock.Any(), itemID).
+					GetItem(gomock.Any(), "test-id").
 					Return(nil, errors.New("get failed"))
 			},
 			wantErr: true,

@@ -1,3 +1,4 @@
+// server/internal/transport/grpc/handler/user_test.go
 package handler
 
 import (
@@ -19,6 +20,7 @@ import (
 
 func TestRegister(t *testing.T) {
 	userID := uuid.New()
+	salt := []byte("test-salt-12345")
 
 	tests := []struct {
 		name      string
@@ -33,11 +35,16 @@ func TestRegister(t *testing.T) {
 			req: authpb.RegisterRequest_builder{
 				Username: proto.String("testuser"),
 				Password: proto.String("password123"),
+				Salt:     salt,
 			}.Build(),
 			setupMock: func(mockService *mocks.MockUserService) {
 				mockService.EXPECT().
-					Register(gomock.Any(), "testuser", "password123").
-					Return(&domain.User{ID: userID, Username: "testuser"}, nil)
+					Register(gomock.Any(), "testuser", "password123", salt).
+					Return(&domain.User{
+						ID:       userID,
+						Username: "testuser",
+						Salt:     salt,
+					}, nil)
 			},
 			wantCode: codes.OK,
 			wantUser: true,
@@ -55,10 +62,11 @@ func TestRegister(t *testing.T) {
 			req: authpb.RegisterRequest_builder{
 				Username: proto.String("testuser"),
 				Password: proto.String("password123"),
+				Salt:     salt,
 			}.Build(),
 			setupMock: func(mockService *mocks.MockUserService) {
 				mockService.EXPECT().
-					Register(gomock.Any(), "testuser", "password123").
+					Register(gomock.Any(), "testuser", "password123", salt).
 					Return(nil, domain.ErrUserAlreadyExists)
 			},
 			wantCode: codes.AlreadyExists,
@@ -66,14 +74,30 @@ func TestRegister(t *testing.T) {
 			wantUser: false,
 		},
 		{
-			name: "validation error",
+			name: "missing salt",
 			req: authpb.RegisterRequest_builder{
 				Username: proto.String("testuser"),
 				Password: proto.String("password123"),
 			}.Build(),
 			setupMock: func(mockService *mocks.MockUserService) {
 				mockService.EXPECT().
-					Register(gomock.Any(), "testuser", "password123").
+					Register(gomock.Any(), "testuser", "password123", []byte(nil)).
+					Return(nil, domain.ErrSaltRequired)
+			},
+			wantCode: codes.InvalidArgument,
+			wantMsg:  "salt is required",
+			wantUser: false,
+		},
+		{
+			name: "validation error",
+			req: authpb.RegisterRequest_builder{
+				Username: proto.String("testuser"),
+				Password: proto.String("password123"),
+				Salt:     salt,
+			}.Build(),
+			setupMock: func(mockService *mocks.MockUserService) {
+				mockService.EXPECT().
+					Register(gomock.Any(), "testuser", "password123", salt).
 					Return(nil, domain.ErrUsernameRequired)
 			},
 			wantCode: codes.InvalidArgument,
@@ -85,10 +109,11 @@ func TestRegister(t *testing.T) {
 			req: authpb.RegisterRequest_builder{
 				Username: proto.String("testuser"),
 				Password: proto.String("password123"),
+				Salt:     salt,
 			}.Build(),
 			setupMock: func(mockService *mocks.MockUserService) {
 				mockService.EXPECT().
-					Register(gomock.Any(), "testuser", "password123").
+					Register(gomock.Any(), "testuser", "password123", salt).
 					Return(nil, errors.New("database error"))
 			},
 			wantCode: codes.Internal,
@@ -134,6 +159,7 @@ func TestRegister(t *testing.T) {
 
 func TestLogin(t *testing.T) {
 	userID := uuid.New()
+	salt := []byte("test-salt-12345")
 
 	tests := []struct {
 		name      string
@@ -142,6 +168,7 @@ func TestLogin(t *testing.T) {
 		wantCode  codes.Code
 		wantMsg   string
 		wantUser  bool
+		wantSalt  bool
 	}{
 		{
 			name: "success",
@@ -152,10 +179,15 @@ func TestLogin(t *testing.T) {
 			setupMock: func(mockService *mocks.MockUserService) {
 				mockService.EXPECT().
 					Login(gomock.Any(), "testuser", "password123").
-					Return(&domain.User{ID: userID, Username: "testuser"}, nil)
+					Return(&domain.User{
+						ID:       userID,
+						Username: "testuser",
+						Salt:     salt,
+					}, nil)
 			},
 			wantCode: codes.OK,
 			wantUser: true,
+			wantSalt: true,
 		},
 		{
 			name: "nil request",
@@ -219,6 +251,10 @@ func TestLogin(t *testing.T) {
 					assert.Equal(t, userID.String(), user.GetId())
 					assert.Equal(t, "testuser", user.GetUsername())
 				}
+				if tt.wantSalt {
+					assert.NotNil(t, resp.GetSalt())
+					assert.Equal(t, salt, resp.GetSalt())
+				}
 			} else {
 				assert.Error(t, err)
 				st, ok := status.FromError(err)
@@ -230,18 +266,4 @@ func TestLogin(t *testing.T) {
 			}
 		})
 	}
-}
-
-func TestToProtoUser(t *testing.T) {
-	userID := uuid.New()
-	user := &domain.User{
-		ID:       userID,
-		Username: "testuser",
-	}
-
-	protoUser := toProtoUser(user)
-
-	assert.NotNil(t, protoUser)
-	assert.Equal(t, userID.String(), protoUser.GetId())
-	assert.Equal(t, "testuser", protoUser.GetUsername())
 }

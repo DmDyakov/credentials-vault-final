@@ -14,7 +14,7 @@ import (
 
 //go:generate mockgen -source=user.go -destination=mocks/user_service_mock.go -package=mocks UserService
 type UserService interface {
-	Register(ctx context.Context, username, password string) (*domain.User, error)
+	Register(ctx context.Context, username, password string, encryptionSalt []byte) (*domain.User, error)
 	Login(ctx context.Context, username, password string) (*domain.User, error)
 }
 
@@ -34,7 +34,7 @@ func (h *AuthHandler) Register(ctx context.Context, req *authpb.RegisterRequest)
 		return nil, status.Error(codes.InvalidArgument, "request is nil")
 	}
 
-	user, err := h.userService.Register(ctx, req.GetUsername(), req.GetPassword())
+	user, err := h.userService.Register(ctx, req.GetUsername(), req.GetPassword(), req.GetSalt())
 	if err != nil {
 		return nil, mapError(err)
 	}
@@ -57,5 +57,6 @@ func (h *AuthHandler) Login(ctx context.Context, req *authpb.LoginRequest) (*aut
 
 	return authpb.LoginResponse_builder{
 		User: toProtoUser(user),
+		Salt: user.Salt,
 	}.Build(), nil
 }

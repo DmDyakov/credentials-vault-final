@@ -54,6 +54,20 @@ func (mr *MockClientMockRecorder) Login(ctx, username, password any) *gomock.Cal
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Login", reflect.TypeOf((*MockClient)(nil).Login), ctx, username, password)
 }
 
+// Logout mocks base method.
+func (m *MockClient) Logout() error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Logout")
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Logout indicates an expected call of Logout.
+func (mr *MockClientMockRecorder) Logout() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Logout", reflect.TypeOf((*MockClient)(nil).Logout))
+}
+
 // Register mocks base method.
 func (m *MockClient) Register(ctx context.Context, username, password string) error {
 	m.ctrl.T.Helper()

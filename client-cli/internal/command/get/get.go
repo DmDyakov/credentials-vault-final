@@ -3,17 +3,18 @@ package get
 
 import (
 	"context"
-	vaultpb "credentials-vault/gen/go/vault/v1"
 	"fmt"
 
 	"github.com/spf13/cobra"
+
+	"credentials-vault/client-cli/internal/model"
 )
 
 //go:generate mockgen -source=get.go -destination=mocks/client_mock.go -package=mocks Client
 
 // Client - интерфейс клиента CLI.
 type Client interface {
-	GetItem(ctx context.Context, id string) (*vaultpb.VaultItem, error)
+	GetItem(ctx context.Context, id string) (*model.VaultItem, error)
 }
 
 // NewGetCmd создаёт команду get.
@@ -28,15 +29,18 @@ func NewGetCmd(cl Client) *cobra.Command {
 				return err
 			}
 
-			fmt.Printf("ID: %s\n", item.GetId())
-			fmt.Printf("Type: %s\n", item.GetType().String())
-			fmt.Printf("Data: %s\n", string(item.GetEncryptedData()))
-			fmt.Printf("Metadata:\n")
-			for k, v := range item.GetMetadata() {
+			fmt.Printf("ID: %s\n", item.ID)
+			fmt.Printf("Type: %s\n", item.Type)
+
+			fmt.Println("\nMetadata:")
+			for k, v := range item.Metadata {
 				fmt.Printf("  %s: %s\n", k, v)
 			}
-			fmt.Printf("Created: %s\n", item.GetCreatedAt().AsTime().Format("2006-01-02 15:04:05"))
-			fmt.Printf("Updated: %s\n", item.GetUpdatedAt().AsTime().Format("2006-01-02 15:04:05"))
+
+			fmt.Println("\nSecret:")
+			for k, v := range item.Secret {
+				fmt.Printf("  %s: %s\n", k, v)
+			}
 
 			return nil
 		},

@@ -9,7 +9,6 @@ import (
 	"credentials-vault/server/internal/domain"
 )
 
-// errorToCode - маппинг доменных ошибок в gRPC коды.
 var errorToCode = map[error]codes.Code{
 	// Auth errors
 	domain.ErrUserAlreadyExists:  codes.AlreadyExists,
@@ -20,6 +19,7 @@ var errorToCode = map[error]codes.Code{
 	domain.ErrUsernameTooLong:    codes.InvalidArgument,
 	domain.ErrPasswordTooShort:   codes.InvalidArgument,
 	domain.ErrPasswordTooLong:    codes.InvalidArgument,
+	domain.ErrSaltRequired:       codes.InvalidArgument,
 
 	// Vault errors
 	domain.ErrVaultItemNotFound:     codes.NotFound,
@@ -29,7 +29,6 @@ var errorToCode = map[error]codes.Code{
 	domain.ErrUserIDRequired:        codes.Unauthenticated,
 }
 
-// mapError маппит доменные ошибки в gRPC статусы.
 func mapError(err error) error {
 	for domainErr, code := range errorToCode {
 		if errors.Is(err, domainErr) {

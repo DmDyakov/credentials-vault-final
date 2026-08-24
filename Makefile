@@ -59,7 +59,7 @@ build-all: build build-cli
 
 dev:
 	docker compose --env-file .env.dev up -d --no-deps postgres
-	@bash -c 'set -a && source .env.dev && set +a && go run -C server ./cmd/server'
+	@bash -c 'set -a && source .env.dev && set +a && go run ./server/cmd/server'
 
 prod:
 	docker compose --env-file .env.prod up -d

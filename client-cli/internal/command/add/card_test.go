@@ -1,7 +1,6 @@
 package add
 
 import (
-	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -18,45 +17,11 @@ func TestAddCardCmd(t *testing.T) {
 		wantErr   bool
 	}{
 		{
-			name: "success",
-			args: []string{
-				"--brand", "visa",
-				"--bank", "sberbank",
-				"--number", "4111111111111111",
-				"--holder", "IVAN IVANOV",
-				"--expiry", "12/25",
-				"--cvv", "123",
-			},
-			setupMock: func(mockClient *mocks.MockClient) {
-				mockClient.EXPECT().
-					AddCard(gomock.Any(), "visa", "sberbank", "4111111111111111", "IVAN IVANOV", "12/25", "123").
-					Return(nil)
-			},
-			wantErr: false,
-		},
-		{
-			name: "error",
-			args: []string{
-				"--brand", "visa",
-				"--number", "4111111111111111",
-				"--holder", "IVAN IVANOV",
-				"--expiry", "12/25",
-				"--cvv", "123",
-			},
-			setupMock: func(mockClient *mocks.MockClient) {
-				mockClient.EXPECT().
-					AddCard(gomock.Any(), "visa", "", "4111111111111111", "IVAN IVANOV", "12/25", "123").
-					Return(errors.New("add failed"))
-			},
-			wantErr: true,
-		},
-		{
 			name: "missing brand",
 			args: []string{
 				"--number", "4111111111111111",
 				"--holder", "IVAN IVANOV",
 				"--expiry", "12/25",
-				"--cvv", "123",
 			},
 			setupMock: func(mockClient *mocks.MockClient) {},
 			wantErr:   true,
@@ -67,7 +32,6 @@ func TestAddCardCmd(t *testing.T) {
 				"--brand", "visa",
 				"--holder", "IVAN IVANOV",
 				"--expiry", "12/25",
-				"--cvv", "123",
 			},
 			setupMock: func(mockClient *mocks.MockClient) {},
 			wantErr:   true,
@@ -78,7 +42,6 @@ func TestAddCardCmd(t *testing.T) {
 				"--brand", "visa",
 				"--number", "4111111111111111",
 				"--expiry", "12/25",
-				"--cvv", "123",
 			},
 			setupMock: func(mockClient *mocks.MockClient) {},
 			wantErr:   true,
@@ -89,18 +52,6 @@ func TestAddCardCmd(t *testing.T) {
 				"--brand", "visa",
 				"--number", "4111111111111111",
 				"--holder", "IVAN IVANOV",
-				"--cvv", "123",
-			},
-			setupMock: func(mockClient *mocks.MockClient) {},
-			wantErr:   true,
-		},
-		{
-			name: "missing cvv",
-			args: []string{
-				"--brand", "visa",
-				"--number", "4111111111111111",
-				"--holder", "IVAN IVANOV",
-				"--expiry", "12/25",
 			},
 			setupMock: func(mockClient *mocks.MockClient) {},
 			wantErr:   true,

@@ -3,6 +3,7 @@ package handler
 import (
 	"errors"
 
+	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -29,11 +30,13 @@ var errorToCode = map[error]codes.Code{
 	domain.ErrUserIDRequired:        codes.Unauthenticated,
 }
 
-func mapError(err error) error {
+func mapError(err error, logger *zap.Logger) error {
 	for domainErr, code := range errorToCode {
 		if errors.Is(err, domainErr) {
 			return status.Error(code, domainErr.Error())
 		}
 	}
+	logger.Error("internal error", zap.Error(err))
+
 	return status.Error(codes.Internal, "internal error")
 }

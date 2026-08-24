@@ -60,10 +60,10 @@ func NewServer(cfg *config.Config, logger *zap.Logger, userService UserService, 
 		grpc.UnaryInterceptor(authInterceptor.Unary()),
 	)
 
-	authHandler := handler.NewAuthHandler(userService)
+	authHandler := handler.NewAuthHandler(userService, logger)
 	authpb.RegisterAuthServiceServer(s, authHandler)
 
-	vaultHandler := handler.NewVaultHandler(vaultService)
+	vaultHandler := handler.NewVaultHandler(vaultService, logger)
 	vaultpb.RegisterVaultServiceServer(s, vaultHandler)
 
 	if cfg.IsDev() {

@@ -4,6 +4,7 @@ package handler
 import (
 	"context"
 
+	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
@@ -21,11 +22,13 @@ type UserService interface {
 type AuthHandler struct {
 	authpb.UnimplementedAuthServiceServer
 	userService UserService
+	logger      *zap.Logger
 }
 
-func NewAuthHandler(userService UserService) *AuthHandler {
+func NewAuthHandler(userService UserService, logger *zap.Logger) *AuthHandler {
 	return &AuthHandler{
 		userService: userService,
+		logger:      logger,
 	}
 }
 
@@ -36,7 +39,7 @@ func (h *AuthHandler) Register(ctx context.Context, req *authpb.RegisterRequest)
 
 	user, err := h.userService.Register(ctx, req.GetUsername(), req.GetPassword(), req.GetSalt())
 	if err != nil {
-		return nil, mapError(err)
+		return nil, mapError(err, h.logger)
 	}
 
 	return authpb.RegisterResponse_builder{
@@ -52,7 +55,7 @@ func (h *AuthHandler) Login(ctx context.Context, req *authpb.LoginRequest) (*aut
 
 	user, err := h.userService.Login(ctx, req.GetUsername(), req.GetPassword())
 	if err != nil {
-		return nil, mapError(err)
+		return nil, mapError(err, h.logger)
 	}
 
 	return authpb.LoginResponse_builder{

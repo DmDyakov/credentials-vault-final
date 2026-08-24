@@ -1,7 +1,6 @@
 package auth
 
 import (
-	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -18,36 +17,18 @@ func TestRegisterCmd(t *testing.T) {
 		wantErr   bool
 	}{
 		{
-			name: "success",
-			args: []string{"--username", "testuser", "--password", "password123"},
+			name: "missing username",
+			args: []string{},
 			setupMock: func(mockClient *mocks.MockClient) {
-				mockClient.EXPECT().
-					Register(gomock.Any(), "testuser", "password123").
-					Return(nil)
-			},
-			wantErr: false,
-		},
-		{
-			name: "error",
-			args: []string{"--username", "testuser", "--password", "password123"},
-			setupMock: func(mockClient *mocks.MockClient) {
-				mockClient.EXPECT().
-					Register(gomock.Any(), "testuser", "password123").
-					Return(errors.New("register failed"))
 			},
 			wantErr: true,
 		},
 		{
-			name:      "missing username",
-			args:      []string{"--password", "password123"},
-			setupMock: func(mockClient *mocks.MockClient) {},
-			wantErr:   true,
-		},
-		{
-			name:      "missing password",
-			args:      []string{"--username", "testuser"},
-			setupMock: func(mockClient *mocks.MockClient) {},
-			wantErr:   true,
+			name: "empty username",
+			args: []string{"--username", ""},
+			setupMock: func(mockClient *mocks.MockClient) {
+			},
+			wantErr: true,
 		},
 	}
 

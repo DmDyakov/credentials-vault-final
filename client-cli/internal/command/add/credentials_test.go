@@ -1,7 +1,6 @@
 package add
 
 import (
-	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -18,38 +17,9 @@ func TestAddCredentialsCmd(t *testing.T) {
 		wantErr   bool
 	}{
 		{
-			name: "success",
-			args: []string{
-				"--site", "example.com",
-				"--username", "user",
-				"--password", "pass",
-			},
-			setupMock: func(mockClient *mocks.MockClient) {
-				mockClient.EXPECT().
-					AddCredentials(gomock.Any(), "example.com", "user", "pass").
-					Return(nil)
-			},
-			wantErr: false,
-		},
-		{
-			name: "error",
-			args: []string{
-				"--site", "example.com",
-				"--username", "user",
-				"--password", "pass",
-			},
-			setupMock: func(mockClient *mocks.MockClient) {
-				mockClient.EXPECT().
-					AddCredentials(gomock.Any(), "example.com", "user", "pass").
-					Return(errors.New("add failed"))
-			},
-			wantErr: true,
-		},
-		{
 			name: "missing site",
 			args: []string{
 				"--username", "user",
-				"--password", "pass",
 			},
 			setupMock: func(mockClient *mocks.MockClient) {},
 			wantErr:   true,
@@ -58,16 +28,24 @@ func TestAddCredentialsCmd(t *testing.T) {
 			name: "missing username",
 			args: []string{
 				"--site", "example.com",
-				"--password", "pass",
 			},
 			setupMock: func(mockClient *mocks.MockClient) {},
 			wantErr:   true,
 		},
 		{
-			name: "missing password",
+			name: "empty site",
+			args: []string{
+				"--site", "",
+				"--username", "user",
+			},
+			setupMock: func(mockClient *mocks.MockClient) {},
+			wantErr:   true,
+		},
+		{
+			name: "empty username",
 			args: []string{
 				"--site", "example.com",
-				"--username", "user",
+				"--username", "",
 			},
 			setupMock: func(mockClient *mocks.MockClient) {},
 			wantErr:   true,

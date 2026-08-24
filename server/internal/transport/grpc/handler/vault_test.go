@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
+	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
@@ -80,7 +81,7 @@ func TestCreateItem(t *testing.T) {
 			t.Cleanup(ctrl.Finish)
 
 			mockService := mocks.NewMockVaultService(ctrl)
-			handler := NewVaultHandler(mockService)
+			handler := NewVaultHandler(mockService, zap.NewNop())
 
 			tt.setupMock(mockService)
 
@@ -159,7 +160,7 @@ func TestGetItem(t *testing.T) {
 			t.Cleanup(ctrl.Finish)
 
 			mockService := mocks.NewMockVaultService(ctrl)
-			handler := NewVaultHandler(mockService)
+			handler := NewVaultHandler(mockService, zap.NewNop())
 
 			tt.setupMock(mockService)
 
@@ -226,7 +227,7 @@ func TestListItems(t *testing.T) {
 			t.Cleanup(ctrl.Finish)
 
 			mockService := mocks.NewMockVaultService(ctrl)
-			handler := NewVaultHandler(mockService)
+			handler := NewVaultHandler(mockService, zap.NewNop())
 
 			tt.setupMock(mockService)
 
@@ -293,7 +294,7 @@ func TestUpdateItem(t *testing.T) {
 			t.Cleanup(ctrl.Finish)
 
 			mockService := mocks.NewMockVaultService(ctrl)
-			handler := NewVaultHandler(mockService)
+			handler := NewVaultHandler(mockService, zap.NewNop())
 
 			tt.setupMock(mockService)
 
@@ -359,7 +360,7 @@ func TestDeleteItem(t *testing.T) {
 			t.Cleanup(ctrl.Finish)
 
 			mockService := mocks.NewMockVaultService(ctrl)
-			handler := NewVaultHandler(mockService)
+			handler := NewVaultHandler(mockService, zap.NewNop())
 
 			tt.setupMock(mockService)
 

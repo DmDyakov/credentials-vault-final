@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
@@ -25,12 +26,14 @@ type VaultService interface {
 type VaultHandler struct {
 	vaultpb.UnimplementedVaultServiceServer
 	vaultService VaultService
+	logger       *zap.Logger
 }
 
 // NewVaultHandler создаёт новый обработчик хранилища.
-func NewVaultHandler(vaultService VaultService) *VaultHandler {
+func NewVaultHandler(vaultService VaultService, logger *zap.Logger) *VaultHandler {
 	return &VaultHandler{
 		vaultService: vaultService,
+		logger:       logger,
 	}
 }
 
@@ -52,7 +55,7 @@ func (h *VaultHandler) CreateItem(ctx context.Context, req *vaultpb.CreateItemRe
 
 	item, err := h.vaultService.CreateItem(ctx, userID, itemType, req.GetEncryptedData(), req.GetMetadata())
 	if err != nil {
-		return nil, mapError(err)
+		return nil, mapError(err, h.logger)
 	}
 
 	return vaultpb.CreateItemResponse_builder{
@@ -78,7 +81,7 @@ func (h *VaultHandler) GetItem(ctx context.Context, req *vaultpb.GetItemRequest)
 
 	item, err := h.vaultService.GetItem(ctx, itemID, userID)
 	if err != nil {
-		return nil, mapError(err)
+		return nil, mapError(err, h.logger)
 	}
 
 	return vaultpb.GetItemResponse_builder{
@@ -104,7 +107,7 @@ func (h *VaultHandler) UpdateItem(ctx context.Context, req *vaultpb.UpdateItemRe
 
 	item, err := h.vaultService.UpdateItem(ctx, itemID, userID, req.GetEncryptedData(), req.GetMetadata())
 	if err != nil {
-		return nil, mapError(err)
+		return nil, mapError(err, h.logger)
 	}
 
 	return vaultpb.UpdateItemResponse_builder{
@@ -129,7 +132,7 @@ func (h *VaultHandler) DeleteItem(ctx context.Context, req *vaultpb.DeleteItemRe
 	}
 
 	if err := h.vaultService.DeleteItem(ctx, itemID, userID); err != nil {
-		return nil, mapError(err)
+		return nil, mapError(err, h.logger)
 	}
 
 	return vaultpb.DeleteItemResponse_builder{
@@ -159,7 +162,7 @@ func (h *VaultHandler) ListItems(ctx context.Context, req *vaultpb.ListItemsRequ
 
 	items, err := h.vaultService.ListItems(ctx, userID, itemType)
 	if err != nil {
-		return nil, mapError(err)
+		return nil, mapError(err, h.logger)
 	}
 
 	protoItems := make([]*vaultpb.VaultItem, 0, len(items))

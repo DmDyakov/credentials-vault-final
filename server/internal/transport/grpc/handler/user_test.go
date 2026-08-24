@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
+	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
@@ -128,7 +129,7 @@ func TestRegister(t *testing.T) {
 			t.Cleanup(ctrl.Finish)
 
 			mockService := mocks.NewMockUserService(ctrl)
-			handler := NewAuthHandler(mockService)
+			handler := NewAuthHandler(mockService, zap.NewNop())
 
 			tt.setupMock(mockService)
 
@@ -235,7 +236,7 @@ func TestLogin(t *testing.T) {
 			t.Cleanup(ctrl.Finish)
 
 			mockService := mocks.NewMockUserService(ctrl)
-			handler := NewAuthHandler(mockService)
+			handler := NewAuthHandler(mockService, zap.NewNop())
 
 			tt.setupMock(mockService)
 

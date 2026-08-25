@@ -152,8 +152,10 @@ func (r *VaultItemRepository) Update(ctx context.Context, item *domain.VaultItem
 		UPDATE vault_items
 		SET encrypted_data = $1, metadata = $2, updated_at = NOW()
 		WHERE id = $3 AND user_id = $4 AND deleted_at IS NULL
-		RETURNING updated_at
+		RETURNING id, user_id, type, encrypted_data, metadata, created_at, updated_at
 	`
+
+	var returnedMetadata []byte
 
 	err = r.db.QueryRow(
 		ctx,
@@ -162,13 +164,25 @@ func (r *VaultItemRepository) Update(ctx context.Context, item *domain.VaultItem
 		metadataJSON,
 		item.ID,
 		item.UserID,
-	).Scan(&item.UpdatedAt)
+	).Scan(
+		&item.ID,
+		&item.UserID,
+		&item.Type,
+		&item.EncryptedData,
+		&returnedMetadata,
+		&item.CreatedAt,
+		&item.UpdatedAt,
+	)
 
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return domain.ErrVaultItemNotFound
 		}
 		return fmt.Errorf("update vault item: %w", err)
+	}
+
+	if err := json.Unmarshal(returnedMetadata, &item.Metadata); err != nil {
+		return fmt.Errorf("unmarshal metadata: %w", err)
 	}
 
 	return nil

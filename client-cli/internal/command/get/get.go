@@ -10,7 +10,7 @@ import (
 	"credentials-vault/client-cli/internal/model"
 )
 
-//go:generate mockgen -source=get.go -destination=mocks/client_mock.go -package=mocks Client
+//go:generate mockgen -source=get.go -destination=mocks/client_mock.gen.go -package=mocks Client
 
 // Client - интерфейс клиента CLI.
 type Client interface {

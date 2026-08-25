@@ -11,7 +11,7 @@ import (
 	"credentials-vault/server/internal/domain"
 )
 
-//go:generate mockgen -source=user.go -destination=mocks/users_mock.go -package=mocks UserRepository
+//go:generate mockgen -source=user.go -destination=mocks/users_mock.gen.go -package=mocks UserRepository
 type UserRepository interface {
 	Create(ctx context.Context, user *domain.User) error
 	FindByUsername(ctx context.Context, username string) (*domain.User, error)

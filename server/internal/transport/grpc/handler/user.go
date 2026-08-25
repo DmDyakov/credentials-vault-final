@@ -13,7 +13,7 @@ import (
 	"credentials-vault/server/internal/domain"
 )
 
-//go:generate mockgen -source=user.go -destination=mocks/user_service_mock.go -package=mocks UserService
+//go:generate mockgen -source=user.go -destination=mocks/user_service_mock.gen.go -package=mocks UserService
 type UserService interface {
 	Register(ctx context.Context, username, password string, encryptionSalt []byte) (*domain.User, error)
 	Login(ctx context.Context, username, password string) (*domain.User, error)

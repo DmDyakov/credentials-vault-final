@@ -15,7 +15,7 @@ import (
 	"credentials-vault/pkg/jwt"
 )
 
-//go:generate mockgen -source=auth.go -destination=mocks/jwt_manager_mock.go -package=mocks JWTManager
+//go:generate mockgen -source=auth.go -destination=mocks/jwt_manager_mock.gen.go -package=mocks JWTManager
 type JWTManager interface {
 	Generate(userID string) (jwt.Token, time.Time, error)
 	Verify(token jwt.Token) (*jwt.Claims, error)

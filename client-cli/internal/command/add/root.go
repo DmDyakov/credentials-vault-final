@@ -7,7 +7,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-//go:generate mockgen -source=root.go -destination=mocks/cli_client_mock.go -package=mocks Client
+//go:generate mockgen -source=root.go -destination=mocks/cli_client_mock.gen.go -package=mocks Client
 
 // Client - интерфейс клиента CLI.
 type Client interface {

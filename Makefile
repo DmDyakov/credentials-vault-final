@@ -31,6 +31,7 @@ proto:
 		--go-grpc_opt=module=credentials-vault \
 		api/proto/auth/v1/auth.proto \
 		api/proto/vault/v1/vault.proto
+		@find gen -name "*.pb.go" -exec bash -c 'mv "$$0" "$${0%.pb.go}.pb.gen.go"' {} \;
 
 mocks:
 	go generate -C server ./...

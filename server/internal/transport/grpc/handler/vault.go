@@ -13,7 +13,7 @@ import (
 	"credentials-vault/server/internal/domain"
 )
 
-//go:generate mockgen -source=vault.go -destination=mocks/vault_service_mock.go -package=mocks VaultService
+//go:generate mockgen -source=vault.go -destination=mocks/vault_service_mock.gen.go -package=mocks VaultService
 type VaultService interface {
 	CreateItem(ctx context.Context, userID uuid.UUID, itemType domain.ItemType, encryptedData []byte, metadata map[string]string) (*domain.VaultItem, error)
 	GetItem(ctx context.Context, id uuid.UUID, userID uuid.UUID) (*domain.VaultItem, error)

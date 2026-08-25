@@ -11,7 +11,7 @@ import (
 	"credentials-vault/server/internal/domain"
 )
 
-//go:generate mockgen -source=vault.go -destination=mocks/vault_repository_mock.go -package=mocks VaultRepository
+//go:generate mockgen -source=vault.go -destination=mocks/vault_repository_mock.gen.go -package=mocks VaultRepository
 type VaultRepository interface {
 	Create(ctx context.Context, item *domain.VaultItem) error
 	FindByID(ctx context.Context, id uuid.UUID, userID uuid.UUID) (*domain.VaultItem, error)

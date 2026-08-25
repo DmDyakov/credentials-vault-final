@@ -10,7 +10,7 @@ import (
 	"golang.org/x/term"
 )
 
-//go:generate mockgen -source=register.go -destination=mocks/client_mock.go -package=mocks Client
+//go:generate mockgen -source=register.go -destination=mocks/client_mock.gen.go -package=mocks Client
 
 // Client - интерфейс клиента аутентификации.
 type Client interface {

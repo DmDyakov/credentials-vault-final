@@ -4,7 +4,6 @@ package app
 import (
 	"context"
 	"fmt"
-	"io"
 
 	"credentials-vault/pkg/jwt"
 	"credentials-vault/server/internal/config"
@@ -14,6 +13,7 @@ import (
 	"credentials-vault/server/internal/service/vault"
 	"credentials-vault/server/internal/transport/grpc"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 )
@@ -23,7 +23,7 @@ type App struct {
 	cfg        *config.Config
 	logger     *zap.Logger
 	grpcServer *grpc.Server
-	closers    []io.Closer
+	pg         *pgxpool.Pool
 }
 
 // New создаёт новый App.
@@ -49,19 +49,13 @@ func New(cfg *config.Config, logger *zap.Logger) (*App, error) {
 		cfg:        cfg,
 		logger:     logger,
 		grpcServer: grpcServer,
-		closers:    []io.Closer{pg},
+		pg:         pg,
 	}, nil
 }
 
 // Run запускает сервер.
 func (a *App) Run(ctx context.Context) error {
-	defer func() {
-		for _, c := range a.closers {
-			if err := c.Close(); err != nil {
-				a.logger.Error("failed to close resource", zap.Error(err))
-			}
-		}
-	}()
+	defer a.pg.Close()
 
 	g, ctx := errgroup.WithContext(ctx)
 

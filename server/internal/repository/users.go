@@ -3,20 +3,21 @@ package repository
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"fmt"
 
-	"github.com/lib/pq"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	"credentials-vault/server/internal/domain"
 )
 
 type UserRepository struct {
-	db *sql.DB
+	db *pgxpool.Pool
 }
 
-func NewUserRepository(db *sql.DB) *UserRepository {
+func NewUserRepository(db *pgxpool.Pool) *UserRepository {
 	return &UserRepository{db: db}
 }
 
@@ -27,7 +28,7 @@ func (r *UserRepository) Create(ctx context.Context, user *domain.User) error {
         RETURNING id, created_at, updated_at
     `
 
-	err := r.db.QueryRowContext(
+	err := r.db.QueryRow(
 		ctx,
 		query,
 		user.Username,
@@ -36,7 +37,8 @@ func (r *UserRepository) Create(ctx context.Context, user *domain.User) error {
 	).Scan(&user.ID, &user.CreatedAt, &user.UpdatedAt)
 
 	if err != nil {
-		if pqErr, ok := err.(*pq.Error); ok && pqErr.Code == "23505" {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
 			return domain.ErrUserAlreadyExists
 		}
 		return fmt.Errorf("create user: %w", err)
@@ -53,7 +55,7 @@ func (r *UserRepository) FindByUsername(ctx context.Context, username string) (*
         WHERE username = $1
     `
 
-	err := r.db.QueryRowContext(ctx, query, username).Scan(
+	err := r.db.QueryRow(ctx, query, username).Scan(
 		&user.ID,
 		&user.Username,
 		&user.Password,
@@ -63,7 +65,7 @@ func (r *UserRepository) FindByUsername(ctx context.Context, username string) (*
 	)
 
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, domain.ErrUserNotFound
 		}
 		return nil, fmt.Errorf("find user by username: %w", err)

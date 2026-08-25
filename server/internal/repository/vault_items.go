@@ -2,25 +2,26 @@ package repository
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	"credentials-vault/server/internal/domain"
 )
 
 type VaultItemRepository struct {
-	db *sql.DB
+	db *pgxpool.Pool
 }
 
-func NewVaultItemRepository(db *sql.DB) *VaultItemRepository {
+func NewVaultItemRepository(db *pgxpool.Pool) *VaultItemRepository {
 	return &VaultItemRepository{db: db}
 }
 
-// Create создаёт новый элемент хранилища
+// Create создаёт новый элемент хранилища.
 func (r *VaultItemRepository) Create(ctx context.Context, item *domain.VaultItem) error {
 	metadataJSON, err := json.Marshal(item.Metadata)
 	if err != nil {
@@ -33,7 +34,7 @@ func (r *VaultItemRepository) Create(ctx context.Context, item *domain.VaultItem
 		RETURNING id, created_at, updated_at
 	`
 
-	err = r.db.QueryRowContext(
+	err = r.db.QueryRow(
 		ctx,
 		query,
 		item.UserID,
@@ -49,7 +50,7 @@ func (r *VaultItemRepository) Create(ctx context.Context, item *domain.VaultItem
 	return nil
 }
 
-// FindByID находит элемент по ID и user_id
+// FindByID находит элемент по ID и user_id.
 func (r *VaultItemRepository) FindByID(ctx context.Context, id uuid.UUID, userID uuid.UUID) (*domain.VaultItem, error) {
 	item := &domain.VaultItem{}
 	var metadataJSON []byte
@@ -60,7 +61,7 @@ func (r *VaultItemRepository) FindByID(ctx context.Context, id uuid.UUID, userID
 		WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL
 	`
 
-	err := r.db.QueryRowContext(ctx, query, id, userID).Scan(
+	err := r.db.QueryRow(ctx, query, id, userID).Scan(
 		&item.ID,
 		&item.UserID,
 		&item.Type,
@@ -72,7 +73,7 @@ func (r *VaultItemRepository) FindByID(ctx context.Context, id uuid.UUID, userID
 	)
 
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, domain.ErrVaultItemNotFound
 		}
 		return nil, fmt.Errorf("find vault item by id: %w", err)
@@ -85,7 +86,7 @@ func (r *VaultItemRepository) FindByID(ctx context.Context, id uuid.UUID, userID
 	return item, nil
 }
 
-// FindByUserID находит все элементы пользователя с опциональной фильтрацией по типу
+// FindByUserID находит все элементы пользователя.
 func (r *VaultItemRepository) FindByUserID(ctx context.Context, userID uuid.UUID, itemType *domain.ItemType) ([]*domain.VaultItem, error) {
 	query := `
 		SELECT id, user_id, type, encrypted_data, metadata, created_at, updated_at, deleted_at
@@ -102,7 +103,7 @@ func (r *VaultItemRepository) FindByUserID(ctx context.Context, userID uuid.UUID
 
 	query += " ORDER BY created_at DESC"
 
-	rows, err := r.db.QueryContext(ctx, query, args...)
+	rows, err := r.db.Query(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("find vault items by user id: %w", err)
 	}
@@ -140,7 +141,7 @@ func (r *VaultItemRepository) FindByUserID(ctx context.Context, userID uuid.UUID
 	return items, nil
 }
 
-// Update обновляет encrypted_data и metadata элемента
+// Update обновляет encrypted_data и metadata элемента.
 func (r *VaultItemRepository) Update(ctx context.Context, item *domain.VaultItem) error {
 	metadataJSON, err := json.Marshal(item.Metadata)
 	if err != nil {
@@ -154,7 +155,7 @@ func (r *VaultItemRepository) Update(ctx context.Context, item *domain.VaultItem
 		RETURNING updated_at
 	`
 
-	err = r.db.QueryRowContext(
+	err = r.db.QueryRow(
 		ctx,
 		query,
 		item.EncryptedData,
@@ -164,7 +165,7 @@ func (r *VaultItemRepository) Update(ctx context.Context, item *domain.VaultItem
 	).Scan(&item.UpdatedAt)
 
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return domain.ErrVaultItemNotFound
 		}
 		return fmt.Errorf("update vault item: %w", err)
@@ -173,7 +174,7 @@ func (r *VaultItemRepository) Update(ctx context.Context, item *domain.VaultItem
 	return nil
 }
 
-// SoftDelete мягко удаляет элемент (устанавливает deleted_at)
+// SoftDelete мягко удаляет элемент.
 func (r *VaultItemRepository) SoftDelete(ctx context.Context, id uuid.UUID, userID uuid.UUID) error {
 	query := `
 		UPDATE vault_items
@@ -181,17 +182,12 @@ func (r *VaultItemRepository) SoftDelete(ctx context.Context, id uuid.UUID, user
 		WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL
 	`
 
-	result, err := r.db.ExecContext(ctx, query, id, userID)
+	result, err := r.db.Exec(ctx, query, id, userID)
 	if err != nil {
 		return fmt.Errorf("soft delete vault item: %w", err)
 	}
 
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("get rows affected: %w", err)
-	}
-
-	if rowsAffected == 0 {
+	if result.RowsAffected() == 0 {
 		return domain.ErrVaultItemNotFound
 	}
 

@@ -8,8 +8,9 @@ import (
 	"time"
 
 	"github.com/golang-migrate/migrate/v4"
-	"github.com/golang-migrate/migrate/v4/database/postgres"
+	"github.com/golang-migrate/migrate/v4/database/pgx"
 	"github.com/golang-migrate/migrate/v4/source/iofs"
+	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"go.uber.org/zap"
 
@@ -17,48 +18,60 @@ import (
 	"credentials-vault/server/migrations"
 )
 
-// New создаёт подключение к PostgreSQL и применяет миграции.
-func New(cfg config.PostgresConfig, logger *zap.Logger) (*sql.DB, error) {
+// New создаёт пул подключений к PostgreSQL и применяет миграции.
+func New(cfg config.PostgresConfig, logger *zap.Logger) (*pgxpool.Pool, error) {
 	if cfg.DSN == "" {
 		return nil, fmt.Errorf("postgres: DSN is required")
 	}
 
-	// Применяем миграции через временное подключение
 	if err := runMigrations(cfg, logger); err != nil {
 		return nil, fmt.Errorf("postgres: failed to run migrations: %w", err)
 	}
 
-	// Основное подключение для приложения
-	db, err := sql.Open("pgx", cfg.DSN)
+	poolConfig, err := pgxpool.ParseConfig(cfg.DSN)
 	if err != nil {
-		return nil, fmt.Errorf("postgres: failed to open connection: %w", err)
+		return nil, fmt.Errorf("postgres: failed to parse config: %w", err)
 	}
 
-	db.SetMaxOpenConns(cfg.MaxOpenConns)
-	db.SetMaxIdleConns(cfg.MaxIdleConns)
-	db.SetConnMaxLifetime(cfg.ConnMaxLifetime)
-	db.SetConnMaxIdleTime(cfg.ConnMaxIdleTime)
+	poolConfig.MaxConns = int32(cfg.MaxOpenConns)
+	poolConfig.MinConns = int32(cfg.MaxIdleConns)
+	poolConfig.MaxConnLifetime = cfg.ConnMaxLifetime
+	poolConfig.MaxConnIdleTime = cfg.ConnMaxIdleTime
 
-	if err := pingWithRetry(db, cfg, logger); err != nil {
-		db.Close()
+	pool, err := pgxpool.NewWithConfig(context.Background(), poolConfig)
+	if err != nil {
+		return nil, fmt.Errorf("postgres: failed to create pool: %w", err)
+	}
+
+	if err := pingWithRetry(pool, cfg, logger); err != nil {
+		pool.Close()
 		return nil, fmt.Errorf("postgres: failed to establish connection: %w", err)
 	}
 
 	logger.Info("postgres connection established")
 
-	return db, nil
+	return pool, nil
 }
 
-// runMigrations применяет миграции через отдельное подключение.
+// runMigrations применяет миграции к базе данных через отдельное подключение.
+//
+// Для миграций используется database/sql с драйвером pgx stdlib,
+// так как библиотека golang-migrate требует *sql.DB для создания
+// драйвера миграций. Основной пул приложения (pgxpool) создаётся
+// отдельно после успешного применения миграций.
+//
+// Миграции выполняются с таймаутом cfg.MigrationTimeout.
+// Если за это время миграции не успевают примениться,
+// возвращается ошибка.
 func runMigrations(cfg config.PostgresConfig, logger *zap.Logger) error {
+	ctx, cancel := context.WithTimeout(context.Background(), cfg.ConnectTimeout)
+	defer cancel()
+
 	db, err := sql.Open("pgx", cfg.DSN)
 	if err != nil {
 		return fmt.Errorf("failed to open migration connection: %w", err)
 	}
 	defer db.Close()
-
-	ctx, cancel := context.WithTimeout(context.Background(), cfg.ConnectTimeout)
-	defer cancel()
 
 	if err := db.PingContext(ctx); err != nil {
 		return fmt.Errorf("failed to ping postgres for migrations: %w", err)
@@ -69,7 +82,7 @@ func runMigrations(cfg config.PostgresConfig, logger *zap.Logger) error {
 		return fmt.Errorf("failed to create migration source: %w", err)
 	}
 
-	driver, err := postgres.WithInstance(db, &postgres.Config{})
+	driver, err := pgx.WithInstance(db, &pgx.Config{})
 	if err != nil {
 		return fmt.Errorf("failed to create migration driver: %w", err)
 	}
@@ -103,12 +116,12 @@ func runMigrations(cfg config.PostgresConfig, logger *zap.Logger) error {
 }
 
 // pingWithRetry проверяет подключение с повторными попытками.
-func pingWithRetry(db *sql.DB, cfg config.PostgresConfig, logger *zap.Logger) error {
+func pingWithRetry(pool *pgxpool.Pool, cfg config.PostgresConfig, logger *zap.Logger) error {
 	var lastErr error
 
 	for attempt := 1; attempt <= cfg.MaxRetries; attempt++ {
 		ctx, cancel := context.WithTimeout(context.Background(), cfg.ConnectTimeout)
-		err := db.PingContext(ctx)
+		err := pool.Ping(ctx)
 		cancel()
 
 		if err == nil {

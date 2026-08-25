@@ -2,6 +2,7 @@ package main
 
 import (
 	"go/ast"
+	"go/types"
 	"strings"
 
 	"golang.org/x/tools/go/analysis"
@@ -40,8 +41,13 @@ func runNoOsExit(pass *analysis.Pass) (interface{}, error) {
 					return true
 				}
 
-				pkg, ok := sel.X.(*ast.Ident)
-				if !ok || pkg.Name != "os" || sel.Sel.Name != "Exit" {
+				fn, ok := pass.TypesInfo.Uses[sel.Sel].(*types.Func)
+				if !ok {
+					return true
+				}
+
+				pkg := fn.Pkg()
+				if pkg == nil || pkg.Path() != "os" || sel.Sel.Name != "Exit" {
 					return true
 				}
 

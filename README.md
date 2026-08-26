@@ -1,4 +1,3 @@
-```markdown
 # Credentials Vault
 
 Credentials Vault — система безопасного хранения приватных данных: логинов, паролей, банковских карт, текстовых заметок и бинарных файлов.
@@ -6,7 +5,6 @@ Credentials Vault — система безопасного хранения п�
 ## Возможности
 
 - **End-to-end шифрование** — данные шифруются на клиенте, сервер не имеет доступа к содержимому
-- **Zero-knowledge аутентификация** — мастер-пароль никогда не покидает устройство
 - **Кроссплатформенный CLI** — Windows, Linux, macOS
 - **Синхронизация** — доступ к данным с любого устройства
 - **Метаинформация** — произвольные текстовые метки для любых данных
@@ -15,15 +13,14 @@ Credentials Vault — система безопасного хранения п�
 
 ### Архитектура
 
-Система построена на принципе zero-knowledge: сервер не получает мастер-пароль, ключи шифрования или расшифрованные данные.
+Сервер не получает мастер-пароль или ключи шифрования. Данные шифруются на клиенте до отправки на сервер.
 
 ### Аутентификация
 
 - Пользователь вводит мастер-пароль
-- На клиенте вычисляется приватный ключ: `Ed25519 = Argon2id(master_password, salt)`
-- На сервер передаётся только публичный ключ
-- Аутентификация выполняется по протоколу challenge-response с подписью Ed25519
-- Сервер хранит публичный ключ — его нельзя использовать для входа
+- Сервер хранит bcrypt-хеш пароля
+- После входа выдаётся JWT-токен
+- Токен используется для авторизации запросов
 
 ### Шифрование данных
 
@@ -34,19 +31,19 @@ Credentials Vault — система безопасного хранения п�
 
 ### Защита канала
 
-- Канал связи защищён TLS 1.3
+- Канал связи защищён TLS
 - Двухуровневое шифрование: данные шифруются до отправки, затем защищаются TLS
 
 ### Восстановление доступа
 
-При смене устройства пользователю достаточно ввести мастер-пароль. Соль и публичный ключ загружаются с сервера, приватный ключ восстанавливается, данные расшифровываются.
+При смене устройства пользователю достаточно ввести мастер-пароль. Соль загружается с сервера, ключ шифрования восстанавливается, данные расшифровываются.
 
 ## Установка
 
 ### Сборка из исходников
 
 ```bash
-make build-all-platforms
+make build-all
 ```
 
 Бинарники будут размещены в `bin/`.
@@ -72,18 +69,24 @@ vault version
 ### Команды аутентификации
 
 ```bash
-# Регистрация
-vault register --username=user --password=pass
+# Регистрация (пароль вводится скрыто)
+vault register --username=user
 
-# Вход
-vault login --username=user --password=pass
+# Вход (пароль вводится скрыто)
+vault login --username=user
+
+# Выход
+vault logout
 ```
 
 ### Команды работы с данными
 
 ```bash
-# Добавление записи
-vault add login --site=example.com --username=user --password=pass
+# Добавление учётных данных (пароль вводится скрыто)
+vault add credentials --site=example.com --username=user
+
+# Добавление банковской карты (CVV вводится скрыто)
+vault add card --brand=visa --bank=sberbank --number=4111111111111111 --holder="IVAN IVANOV" --expiry=12/25
 
 # Список записей
 vault list
@@ -99,13 +102,16 @@ vault get <id>
 ./bin/vault.exe init --server=localhost:9090 --ca-file=certs/server.crt
 
 # Регистрация
-./bin/vault.exe register --username=user --password=pass
+./bin/vault.exe register --username=user
 
 # Вход
-./bin/vault.exe login --username=user --password=pass
+./bin/vault.exe login --username=user
 
-# Добавление записи
-./bin/vault.exe add login --site=example.com --username=user --password=pass
+# Добавление учётных данных
+./bin/vault.exe add credentials --site=example.com --username=user
+
+# Добавление карты
+./bin/vault.exe add card --brand=visa --bank=sberbank --number=4111111111111111 --holder="IVAN IVANOV" --expiry=12/25
 
 # Список записей
 ./bin/vault.exe list
@@ -124,13 +130,16 @@ vault get <id>
 .\bin\vault.exe init --server=localhost:9090 --ca-file=certs/server.crt
 
 # Регистрация
-.\bin\vault.exe register --username=user --password=pass
+.\bin\vault.exe register --username=user
 
 # Вход
-.\bin\vault.exe login --username=user --password=pass
+.\bin\vault.exe login --username=user
 
-# Добавление записи
-.\bin\vault.exe add login --site=example.com --username=user --password=pass
+# Добавление учётных данных
+.\bin\vault.exe add credentials --site=example.com --username=user
+
+# Добавление карты
+.\bin\vault.exe add card --brand=visa --bank=sberbank --number=4111111111111111 --holder="IVAN IVANOV" --expiry=12/25
 
 # Список записей
 .\bin\vault.exe list
@@ -146,27 +155,27 @@ vault get <id>
 
 ```bash
 make dev              # Запуск в dev-режиме
-make test             # Запуск тестов
+make test             # Запуск unit-тестов
+make test-integration # Запуск интеграционных тестов
+make test-all         # Все тесты
 make test-coverage    # Покрытие кода
 make check            # Линтеры и проверки
 make build            # Сборка сервера
 make build-cli        # Сборка CLI
-make build-all-platforms  # Сборка под все платформы
+make build-all        # Сборка всех бинарников
 ```
 
 ## Технологии
 
 - Go 1.26
 - gRPC + Protobuf
-- PostgreSQL
-- Ed25519
+- PostgreSQL (pgxpool)
 - Argon2id
 - AES-256-GCM
-- TLS 1.3
+- TLS
 - Docker
 - Cobra
 
 ## Лицензия
 
 MIT
-```

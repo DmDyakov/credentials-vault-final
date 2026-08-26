@@ -7,6 +7,7 @@ import (
 
 	"credentials-vault/client-cli/internal/crypto"
 	"credentials-vault/client-cli/internal/session"
+	"credentials-vault/client-cli/internal/validate"
 	authpb "credentials-vault/gen/go/auth/v1"
 
 	"google.golang.org/grpc"
@@ -16,6 +17,14 @@ import (
 
 // Register регистрирует нового пользователя.
 func (c *Client) Register(ctx context.Context, username, password string) error {
+	if err := validate.Username(username); err != nil {
+		return err
+	}
+
+	if err := validate.Password(password); err != nil {
+		return err
+	}
+
 	salt, err := crypto.GenerateSalt()
 	if err != nil {
 		return fmt.Errorf("failed to generate salt: %w", err)
@@ -47,6 +56,14 @@ func (c *Client) Register(ctx context.Context, username, password string) error 
 
 // Login выполняет вход.
 func (c *Client) Login(ctx context.Context, username, password string) error {
+	if err := validate.Username(username); err != nil {
+		return err
+	}
+
+	if err := validate.Password(password); err != nil {
+		return err
+	}
+
 	var header metadata.MD
 
 	req := authpb.LoginRequest_builder{

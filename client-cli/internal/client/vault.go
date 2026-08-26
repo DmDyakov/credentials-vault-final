@@ -8,6 +8,7 @@ import (
 	"credentials-vault/client-cli/internal/crypto"
 	"credentials-vault/client-cli/internal/model"
 	"credentials-vault/client-cli/internal/session"
+	"credentials-vault/client-cli/internal/validate"
 	vaultpb "credentials-vault/gen/go/vault/v1"
 
 	"google.golang.org/protobuf/proto"
@@ -15,6 +16,10 @@ import (
 
 // AddCredentials добавляет учётные данные в хранилище.
 func (c *Client) AddCredentials(ctx context.Context, site, username, password string) error {
+	if err := validate.Credentials(site, username, password); err != nil {
+		return err
+	}
+
 	key, err := session.Get()
 	if err != nil {
 		return fmt.Errorf("not logged in: %w", err)
@@ -54,6 +59,10 @@ func (c *Client) AddCredentials(ctx context.Context, site, username, password st
 
 // AddCard добавляет карту в хранилище.
 func (c *Client) AddCard(ctx context.Context, brand, bank, number, holder, expiry, cvv string) error {
+	if err := validate.Card(brand, bank, number, holder, expiry, cvv); err != nil {
+		return err
+	}
+
 	key, err := session.Get()
 	if err != nil {
 		return fmt.Errorf("not logged in: %w", err)
@@ -76,13 +85,18 @@ func (c *Client) AddCard(ctx context.Context, brand, bank, number, holder, expir
 		return fmt.Errorf("failed to encrypt: %w", err)
 	}
 
+	if len(number) < 4 {
+		return fmt.Errorf("card number must be at least 4 characters")
+	}
+	last4 := number[len(number)-4:]
+
 	req := vaultpb.CreateItemRequest_builder{
 		Type:          vaultpb.ItemType_ITEM_TYPE_CARD.Enum(),
 		EncryptedData: encryptedData,
 		Metadata: map[string]string{
 			"brand": brand,
 			"bank":  bank,
-			"last4": number[len(number)-4:],
+			"last4": last4,
 		},
 	}.Build()
 

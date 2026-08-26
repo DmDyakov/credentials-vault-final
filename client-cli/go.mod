@@ -3,6 +3,7 @@ module credentials-vault/client-cli
 go 1.26.4
 
 require (
+	github.com/durango/go-credit-card v0.0.0-20220404131259-a9e175ba4082
 	github.com/google/uuid v1.6.0
 	github.com/spf13/cobra v1.10.2
 	github.com/stretchr/testify v1.12.1

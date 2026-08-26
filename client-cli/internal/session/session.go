@@ -105,6 +105,8 @@ func saveToFile(encoded string) error {
 		return err
 	}
 
+	fmt.Fprintf(os.Stderr, "WARNING: key will be stored in %s (less secure than OS keychain)\n", path)
+
 	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
 		return fmt.Errorf("failed to create session directory: %w", err)
 	}

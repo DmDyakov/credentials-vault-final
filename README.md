@@ -40,6 +40,27 @@ Credentials Vault — система безопасного хранения п�
 
 ## Установка
 
+### Генерация TLS сертификатов
+
+Для локальной разработки сгенерируйте самоподписанный сертификат:
+
+```bash
+cd certs
+
+# Вариант 1: openssl
+openssl req -x509 -newkey rsa:2048 -keyout server.key -out server.crt -days 365 -nodes \
+  -subj "/CN=localhost" \
+  -addext "subjectAltName=DNS:localhost,IP:127.0.0.1"
+
+# Вариант 2: mkcert (доверенный сертификат)
+mkcert -install
+mkcert localhost 127.0.0.1
+
+cd ..
+```
+
+Подробнее в [certs/README.md](certs/README.md).
+
 ### Сборка из исходников
 
 ```bash

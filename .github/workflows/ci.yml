@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main, dev]
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.work'
+          cache: true
+
+      - name: Install golangci-lint
+        run: go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.8
+
+      - name: Format check
+        run: make check-fmt
+
+      - name: Lint
+        run: make lint
+
+      - name: Staticlint
+        run: make staticlint
+
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.work'
+          cache: true
+
+      - name: Unit tests
+        run: make test
+        env:
+          JWT_SECRET: 'ci-test-secret-key-123456789012345678901234567890'
+          APP_ENV: 'test'
+
+      - name: Integration tests
+        run: make test-integration
+
+      - name: Tests with coverage
+        run: make test-coverage
+        env:
+          JWT_SECRET: 'ci-test-secret-key-123456789012345678901234567890'
+          APP_ENV: 'test'
